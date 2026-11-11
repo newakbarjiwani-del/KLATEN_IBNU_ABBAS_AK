@@ -50,7 +50,7 @@ class HafalanController extends Controller
         try {
             $periods = $this->mergedPeriods($mode);
             $records = ColumnGroup::order(
-                DB::query()->fromSub($this->combined($mode, $periode, $dari, $sampai), 'gabungan'),
+                DB::query()->fromSub($this->combined($mode, $periode, $dari, $sampai, $groupKey === 'NMCUST'), 'gabungan'),
                 $groupKey,
                 $groups,
             )
@@ -58,6 +58,10 @@ class HafalanController extends Controller
                 ->orderByDesc('urut')
                 ->paginate(30)
                 ->withQueryString();
+
+            if ($groupKey !== 'NMCUST') {
+                $this->fillNames($records->getCollection());
+            }
         } catch (QueryException) {
             return $this->databaseUnavailable();
         }
@@ -281,6 +285,7 @@ class HafalanController extends Controller
                 ->orderByDesc('tgl')
                 ->orderByDesc('urut')
                 ->get();
+            $this->fillNames($records);
         } catch (QueryException) {
             return $this->databaseUnavailable();
         }
@@ -461,10 +466,10 @@ class HafalanController extends Controller
         ]);
     }
 
-    private function combined(string $mode, string $periode, string $dari, string $sampai): Builder
+    private function combined(string $mode, string $periode, string $dari, string $sampai, bool $withName = false): Builder
     {
-        $setoran = $this->setoranRows();
-        $murajaah = $this->murajaahRows();
+        $setoran = $this->setoranRows($withName);
+        $murajaah = $this->murajaahRows($withName);
         $this->constrain($setoran, $periode, $dari, $sampai);
         $this->constrain($murajaah, $periode, $dari, $sampai);
 
@@ -479,40 +484,74 @@ class HafalanController extends Controller
         return $setoran->unionAll($murajaah);
     }
 
-    private function setoranRows(): Builder
+    private function setoranRows(bool $withName): Builder
     {
-        return DB::table('akademik_setoran as h')
-            ->leftJoin('scctcust as s', 's.NOCUST', '=', 'h.NOCUST')
-            ->select([
-                'h.urut',
-                'h.periode',
-                'h.NOCUST',
-                's.NMCUST',
-                'h.juzzdihapal',
-                'h.juzzposisi',
-                'h.juzztotal as total_juzz',
-                'h.ziadah',
-                DB::raw("'' as juzz"),
-                'h.tgl',
-            ]);
+        $query = DB::table('akademik_setoran as h');
+
+        if ($withName) {
+            $query->leftJoin('scctcust as s', 's.NOCUST', '=', 'h.NOCUST');
+        }
+
+        return $query->select([
+            'h.urut',
+            'h.periode',
+            'h.NOCUST',
+            $withName ? 's.NMCUST' : DB::raw("'' as NMCUST"),
+            'h.juzzdihapal',
+            'h.juzzposisi',
+            'h.juzztotal as total_juzz',
+            'h.ziadah',
+            DB::raw("'' as juzz"),
+            'h.tgl',
+        ]);
     }
 
-    private function murajaahRows(): Builder
+    private function murajaahRows(bool $withName): Builder
     {
-        return DB::table('akademik_murajaah as h')
-            ->leftJoin('scctcust as s', 's.NOCUST', '=', 'h.NOCUST')
-            ->select([
-                'h.urut',
-                'h.periode',
-                'h.NOCUST',
-                's.NMCUST',
-                DB::raw("'' as juzzdihapal"),
-                DB::raw("'' as juzzposisi"),
-                'h.totjuzz as total_juzz',
-                DB::raw("'' as ziadah"),
-                'h.juzz',
-                'h.tgl',
-            ]);
+        $query = DB::table('akademik_murajaah as h');
+
+        if ($withName) {
+            $query->leftJoin('scctcust as s', 's.NOCUST', '=', 'h.NOCUST');
+        }
+
+        return $query->select([
+            'h.urut',
+            'h.periode',
+            'h.NOCUST',
+            $withName ? 's.NMCUST' : DB::raw("'' as NMCUST"),
+            DB::raw("'' as juzzdihapal"),
+            DB::raw("'' as juzzposisi"),
+            'h.totjuzz as total_juzz',
+            DB::raw("'' as ziadah"),
+            'h.juzz',
+            'h.tgl',
+        ]);
+    }
+
+    private function fillNames(Collection $rows): void
+    {
+        $ids = $rows
+            ->map(fn (object $row): string => (string) $row->NOCUST)
+            ->filter(fn (string $id): bool => $id !== '')
+            ->unique()
+            ->values();
+
+        if ($ids->isEmpty()) {
+            return;
+        }
+
+        $names = collect();
+
+        foreach ($ids->chunk(500) as $chunk) {
+            $found = DB::table('scctcust')
+                ->whereIn('NOCUST', $chunk->all())
+                ->pluck('NMCUST', 'NOCUST');
+            $names = $names->union($found);
+        }
+
+        $rows->each(function (object $row) use ($names): void {
+            $row->NMCUST = trim((string) ($names[$row->NOCUST] ?? ''));
+        });
     }
 
     private function constrain(Builder $query, string $periode, string $dari, string $sampai): void
