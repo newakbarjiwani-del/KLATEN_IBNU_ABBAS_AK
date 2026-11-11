@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /login
+Disallow: /kesantrian
+Disallow: /tahfidz
+Disallow: /akademik
+
