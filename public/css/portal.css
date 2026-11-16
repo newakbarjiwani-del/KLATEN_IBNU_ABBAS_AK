@@ -33,10 +33,10 @@
     --shadow-sm: 0 2px 4px rgba(15, 29, 43, 0.05);
     --shadow: 0 4px 16px rgba(15, 29, 43, 0.06), 0 1px 3px rgba(15, 29, 43, 0.03);
     --shadow-lg: 0 14px 34px rgba(15, 29, 43, 0.09), 0 2px 6px rgba(15, 29, 43, 0.04);
-    --radius-xs: 3px;
-    --radius-sm: 6px;
-    --radius: 8px;
-    --radius-lg: 12px;
+    --radius-xs: 2px;
+    --radius-sm: 2px;
+    --radius: 2px;
+    --radius-lg: 4px;
     --radius-full: 9999px;
     --green: var(--brand);
     --green-deep: var(--navy);
@@ -482,18 +482,19 @@ button[type="submit"]:active,
 
 .desk-side {
     position: sticky;
-    top: 12px;
+    top: 0;
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 24px);
-    margin: 12px 0 12px 12px;
+    height: 100vh;
+    margin: 0;
     padding: 20px 16px 16px;
     overflow: hidden;
     color: var(--on-brand);
     background: linear-gradient(180deg, var(--navy) 0%, #0d2131 100%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: var(--radius-lg);
-    box-shadow: 0 12px 30px rgba(8, 18, 28, 0.22);
+    border: 0;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0;
+    box-shadow: none;
 }
 
 .desk-brand {
@@ -554,8 +555,8 @@ button[type="submit"]:active,
     letter-spacing: 0.06em;
     color: #34d399;
     background: rgba(52, 211, 153, 0.14);
-    padding: 2px 7px;
-    border-radius: var(--radius-full);
+    padding: 2px 6px;
+    border-radius: var(--radius-xs);
 }
 
 .pulse-dot {
@@ -726,13 +727,13 @@ button[type="submit"]:active,
 
 .desk-main {
     min-width: 0;
-    min-height: calc(100vh - 24px);
-    margin: 12px;
+    min-height: 100vh;
+    margin: 0;
     padding: 28px 32px 40px;
     background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow);
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
 }
 
 .desk-head {
@@ -746,10 +747,10 @@ button[type="submit"]:active,
     position: absolute;
     bottom: -1px;
     left: 0;
-    width: 90px;
-    height: 3px;
-    background: linear-gradient(90deg, var(--brand) 0%, var(--highlight) 100%);
-    border-radius: 3px;
+    width: 72px;
+    height: 2px;
+    background: var(--highlight);
+    border-radius: 0;
 }
 
 .desk-head-content {
@@ -767,15 +768,15 @@ button[type="submit"]:active,
 
 .kicker {
     display: inline-block;
-    margin: 0 0 6px;
+    margin: 0 0 8px;
     color: var(--highlight);
-    letter-spacing: 0.12em;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    font-size: 11.5px;
+    font-size: 11px;
     font-weight: 700;
-    background: var(--highlight-soft);
-    padding: 3px 10px;
-    border-radius: var(--radius-full);
+    background: transparent;
+    padding: 0;
+    border-radius: 0;
 }
 
 .desk-main h1 {
@@ -808,7 +809,7 @@ button[type="submit"]:active,
     padding: 6px 12px;
     background: var(--paper-deep);
     border: 1px solid var(--line);
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-xs);
     font-size: 12px;
     font-weight: 600;
     color: var(--ink-soft);
@@ -964,7 +965,7 @@ html[data-theme="dark"] .hero-banner-tag {
     padding: 2px 8px;
     background: var(--card);
     border: 1px solid var(--line);
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-xs);
     color: var(--ink-soft);
 }
 
@@ -1043,8 +1044,8 @@ html[data-theme="dark"] .hero-banner-tag {
     margin-top: 24px;
     background: var(--card);
     border: 1px solid var(--line);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
+    border-radius: 0;
+    box-shadow: none;
     overflow: hidden;
 }
 
@@ -1504,8 +1505,10 @@ html[data-theme="dark"] .hero-banner-tag {
 
 .data-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     font-variant-numeric: tabular-nums;
+    --grid: color-mix(in srgb, var(--ink-muted) 72%, var(--line));
 }
 
 .data-table th,
@@ -1513,8 +1516,20 @@ html[data-theme="dark"] .hero-banner-tag {
     padding: 12px 14px;
     text-align: left;
     vertical-align: middle;
-    border-bottom: 1px solid var(--line);
+    border: 0;
+    border-right: 1px solid var(--grid);
+    border-bottom: 1px solid var(--grid);
+    background-clip: border-box;
     font-size: 13px;
+}
+
+.data-table th:first-child,
+.data-table td:first-child {
+    border-left: 1px solid var(--grid);
+}
+
+.data-table thead tr:first-child th {
+    border-top: 1px solid var(--grid);
 }
 
 .data-table th {
@@ -1526,11 +1541,9 @@ html[data-theme="dark"] .hero-banner-tag {
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--ink-soft);
-    background: var(--paper-deep);
+    background-color: var(--paper-deep);
     white-space: nowrap;
     user-select: none;
-    border-bottom: 1px solid var(--line);
-    box-shadow: inset 0 -1px 0 var(--line);
 }
 
 .table-wrap.has-complex-head {
@@ -1545,8 +1558,7 @@ html[data-theme="dark"] .hero-banner-tag {
 .table-wrap.has-complex-head .data-table thead tr:nth-child(2) th {
     top: var(--head-band);
     z-index: 4;
-    background: var(--card);
-    box-shadow: inset 0 -1px 0 var(--line);
+    background-color: var(--card);
 }
 
 .data-table tbody tr:nth-child(even):not(.row-group) td {
@@ -1633,7 +1645,11 @@ html[data-theme="dark"] .hero-banner-tag {
 }
 
 .data-table tbody tr:hover:not(.row-group) td {
-    background: var(--brand-soft);
+    background: color-mix(in srgb, var(--brand) 8%, var(--card));
+}
+
+.data-table tbody tr:hover:not(.row-group) td:first-child {
+    box-shadow: inset 2px 0 0 var(--brand);
 }
 
 .data-table tbody tr.is-selected td {
@@ -1717,7 +1733,6 @@ html[data-theme="dark"] .hero-banner-tag {
 
 .data-table th.col-score-head {
     text-align: center;
-    border-bottom: 1px solid var(--line);
     letter-spacing: 0.1em;
 }
 
@@ -1742,13 +1757,14 @@ html[data-theme="dark"] .hero-banner-tag {
 }
 
 .data-table .col-action {
-    width: 100px;
-    min-width: 90px;
-    text-align: center;
+    width: 112px;
+    min-width: 112px;
+    text-align: right;
+    white-space: nowrap;
 }
 
 .data-table th.col-action {
-    text-align: center;
+    text-align: right;
 }
 
 .data-table .col-score.is-debet {
@@ -1756,16 +1772,28 @@ html[data-theme="dark"] .hero-banner-tag {
 }
 
 .btn-detail {
-    height: 30px;
-    padding: 0 14px;
+    height: 28px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     font-size: 12px;
     font-weight: 600;
+    line-height: 1;
     color: var(--brand);
-    background: var(--brand-soft);
-    border: 1px solid var(--brand-border);
-    border-radius: var(--radius-sm);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
     cursor: pointer;
-    transition: all 0.15s ease;
+    white-space: nowrap;
+    vertical-align: middle;
+    text-decoration: none;
+}
+
+.btn-detail svg {
+    display: block;
+    flex: none;
 }
 
 .btn-detail:hover {
@@ -1809,44 +1837,44 @@ html[data-theme="dark"] .hero-banner-tag {
 }
 
 .group-ibadah {
-    background: color-mix(in srgb, #0875ab 16%, var(--card)) !important;
+    background-color: color-mix(in srgb, #0875ab 20%, var(--card)) !important;
     color: var(--brand) !important;
 }
 
 .group-adab {
-    background: color-mix(in srgb, #d97706 16%, var(--card)) !important;
+    background-color: color-mix(in srgb, #d97706 20%, var(--card)) !important;
     color: var(--highlight) !important;
 }
 
 .group-pribadi {
-    background: color-mix(in srgb, #0d8a54 16%, var(--card)) !important;
+    background-color: color-mix(in srgb, #0d8a54 20%, var(--card)) !important;
     color: var(--success) !important;
 }
 
 .group-diri {
-    background: color-mix(in srgb, #64748b 16%, var(--card)) !important;
+    background-color: color-mix(in srgb, #64748b 20%, var(--card)) !important;
     color: var(--ink) !important;
 }
 
 .group-catatan {
-    background: color-mix(in srgb, #7c3aed 12%, var(--card)) !important;
+    background-color: color-mix(in srgb, #7c3aed 16%, var(--card)) !important;
     color: #7c3aed !important;
 }
 
 .table-wrap.has-complex-head .group-ibadah-sub {
-    background: color-mix(in srgb, #0875ab 8%, var(--card));
+    background-color: color-mix(in srgb, #0875ab 12%, var(--card)) !important;
 }
 
 .table-wrap.has-complex-head .group-adab-sub {
-    background: color-mix(in srgb, #d97706 8%, var(--card));
+    background-color: color-mix(in srgb, #d97706 12%, var(--card)) !important;
 }
 
 .table-wrap.has-complex-head .group-pribadi-sub {
-    background: color-mix(in srgb, #0d8a54 8%, var(--card));
+    background-color: color-mix(in srgb, #0d8a54 12%, var(--card)) !important;
 }
 
 .table-wrap.has-complex-head .group-diri-sub {
-    background: color-mix(in srgb, #64748b 10%, var(--card));
+    background-color: color-mix(in srgb, #64748b 14%, var(--card)) !important;
 }
 
 html[data-theme="dark"] .group-catatan {
@@ -2247,7 +2275,7 @@ th:hover .th-group-icon {
     align-items: center;
     height: 18px;
     padding: 0 6px;
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-xs);
     background: var(--on-brand);
     color: var(--brand);
     font-size: 10px;
@@ -2260,7 +2288,7 @@ th:hover .th-group-icon {
 .data-table th:has(.th-group.is-active) {
     background: var(--brand);
     color: var(--on-brand);
-    box-shadow: inset 0 -2px 0 var(--highlight);
+    box-shadow: inset -1px 0 0 var(--grid), inset 0 -2px 0 var(--highlight);
 }
 
 .th-group.is-active,
@@ -2730,7 +2758,7 @@ body.nav-open {
 
     .desk-main {
         min-height: 0;
-        margin: 10px;
+        margin: 0;
         padding: 18px 14px 28px;
     }
 
@@ -2844,7 +2872,7 @@ body.nav-open {
     }
 
     .desk-main {
-        margin: 8px;
+        margin: 0;
         padding: 16px 12px 24px;
     }
 

@@ -108,7 +108,7 @@
                             <td class="col-thn">{{ $row->thn_aka }}</td>
                             <td class="col-action">
                                 <button type="button" class="btn-detail" data-nis="{{ trim((string) $row->NOCUST) }}" data-thn="{{ $row->thn_aka }}" title="Lihat rincian riwayat pelanggaran santri">
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                         <circle cx="12" cy="12" r="3"></circle>
                                     </svg>
