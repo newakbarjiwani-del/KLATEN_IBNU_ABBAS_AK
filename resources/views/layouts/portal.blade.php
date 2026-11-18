@@ -41,7 +41,7 @@
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js@1.12.0/src/toastify.min.css">
     @endif
     <link rel="icon" href="{{ asset('logo.png') }}" type="image/png">
-    <link rel="stylesheet" href="{{ asset('css/portal.css') }}?v=42">
+    <link rel="stylesheet" href="{{ asset('css/portal.css') }}?v=43">
     <script>
         (function () {
             var saved = localStorage.getItem('theme');

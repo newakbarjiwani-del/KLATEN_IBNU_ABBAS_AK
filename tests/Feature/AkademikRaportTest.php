@@ -55,12 +55,19 @@ class AkademikRaportTest extends TestCase
 
     public function test_dashboard_lists_upload_and_data_raport(): void
     {
-        $this->actingAs($this->admin())
+        $admin = $this->admin();
+
+        $this->actingAs($admin)
             ->get('/akademik')
             ->assertOk()
             ->assertSee('Raport Akademik')
             ->assertSee('Upload Raport')
             ->assertSee('Data Raport');
+
+        $this->actingAs($admin)
+            ->get('/akademik/upload-raport')
+            ->assertOk()
+            ->assertSee('Hanya berkas PDF. Ukuran paling besar 10 MB.');
     }
 
     public function test_pdf_upload_is_stored_against_akademik_rapot(): void

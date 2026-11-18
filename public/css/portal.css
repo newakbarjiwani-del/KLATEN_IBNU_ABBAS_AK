@@ -281,6 +281,13 @@ label {
     color: var(--ink);
 }
 
+.field-note {
+    color: var(--ink-soft);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
 input,
 select,
 textarea {

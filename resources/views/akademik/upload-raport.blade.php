@@ -58,6 +58,7 @@
             <label>
                 Berkas PDF
                 <input type="file" name="berkas" accept="application/pdf,.pdf" required style="padding-top: 8px;">
+                <small class="field-note">Hanya berkas PDF. Ukuran paling besar 10 MB.</small>
             </label>
             <div class="sheet-actions">
                 <button type="submit" class="btn-primary">Mulai upload</button>

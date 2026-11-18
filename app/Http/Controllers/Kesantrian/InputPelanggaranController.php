@@ -25,7 +25,7 @@ class InputPelanggaranController extends Controller
             $years = TahunAkademik::query()->orderByDesc('urut')->get();
             $references = ReferensiPelanggaran::query()->orderBy('urut')->get();
 
-            $selectedNis = trim((string) $request->query('nis', session('last_nis', CatatanPelanggaran::query()->latest('urut')->value('NOCUST') ?? '')));
+            $selectedNis = trim((string) $request->query('nis', ''));
             $selectedSantri = null;
             $records = collect();
             $totals = ['pelanggaran' => 0, 'remisi' => 0, 'sisa' => 0];
@@ -104,7 +104,6 @@ class InputPelanggaranController extends Controller
 
         return redirect()
             ->route('kesantrian.menu', 'input-pelanggaran')
-            ->with('last_nis', $nocust)
             ->with('status', $violation ? 'Pelanggaran disimpan.' : 'Remisi disimpan.');
     }
 

@@ -42,6 +42,7 @@
             <label>
                 Berkas PDF
                 <input type="file" name="berkas" accept="application/pdf,.pdf" required style="padding-top: 8px;">
+                <small class="field-note">Hanya berkas PDF. Ukuran paling besar 10 MB.</small>
             </label>
             <label>
                 Ujian

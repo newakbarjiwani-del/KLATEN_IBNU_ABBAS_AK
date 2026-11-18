@@ -70,18 +70,26 @@ class InputPelanggaranTest extends TestCase
             'thn_aka' => '2024/2025 - GANJIL',
         ]);
 
-        $this->actingAs($this->kesantrianAdmin())
+        $admin = $this->kesantrianAdmin();
+
+        $this->actingAs($admin)
             ->get('/kesantrian/input-pelanggaran')
             ->assertOk()
             ->assertSee('Input Pelanggaran')
             ->assertSee('Masbuq shalat')
-            ->assertSee('1301154344')
-            ->assertSee('Ahmad')
-            ->assertSee('terlambat iqomah')
+            ->assertSee('name="nocust" value=""', false)
+            ->assertDontSee('terlambat iqomah')
             ->assertSee('name="jenis"', false)
             ->assertSee('NIS / Nama')
             ->assertSee('Ketik NIS atau nama santri...')
             ->assertDontSee('belum diisi.');
+
+        $this->actingAs($admin)
+            ->get('/kesantrian/input-pelanggaran?nis=1301154344')
+            ->assertOk()
+            ->assertSee('1301154344')
+            ->assertSee('Ahmad')
+            ->assertSee('terlambat iqomah');
     }
 
     public function test_violation_score_is_taken_from_the_master(): void

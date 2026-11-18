@@ -89,6 +89,11 @@ class RaportTahfidzTest extends TestCase
             ->assertDontSee('belum diisi.');
 
         $this->actingAs($admin)
+            ->get('/kesantrian/upload-raport')
+            ->assertOk()
+            ->assertSee('Hanya berkas PDF. Ukuran paling besar 10 MB.');
+
+        $this->actingAs($admin)
             ->get('/kesantrian/data-raport?kelompok=A&thn_aka='.urlencode('2024/2025 - GANJIL'))
             ->assertOk()
             ->assertSee('Ahmad')
