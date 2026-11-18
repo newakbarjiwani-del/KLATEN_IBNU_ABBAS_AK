@@ -88,6 +88,7 @@
                         <x-group-column label="Jenjang" column-key="jenjang" :group-key="$groupKey" />
                         <x-group-column label="Tahun akademik" column-key="THN_AKA" :group-key="$groupKey" />
                         <x-group-column label="Ujian" column-key="UJIAN" :group-key="$groupKey" />
+                        <th>Tanggal upload</th>
                         <th>File raport</th>
                     </tr>
                 </thead>
@@ -98,12 +99,12 @@
                         @if ($groupKey)
                             @php $groupValue = \App\Tables\ColumnGroup::text($record, $groupKey); @endphp
                             @if ($group !== $groupValue)
-                                <x-group-band :label="$groupLabel" :value="$groupValue" span="8" />
+                                <x-group-band :label="$groupLabel" :value="$groupValue" span="9" />
                                 @php $group = $groupValue; @endphp
                             @endif
                         @elseif ($group !== $key)
                             <tr class="row-group">
-                                <td colspan="8">
+                                <td colspan="9">
                                     <strong>{{ trim((string) $record->NMCUST) !== '' ? trim((string) $record->NMCUST) : 'Tanpa nama' }}</strong>
                                     <span>NIS: {{ $key }}</span>
                                 </td>
@@ -122,6 +123,7 @@
                                     {{ $record->UJIAN === 'AKHIR' ? 'Akhir' : 'Mid' }}
                                 </span>
                             </td>
+                            <td>{{ $record->tanggal_upload }}</td>
                             <td>
                                 @if ($record->tersedia)
                                     <a href="{{ $record->tautan }}" target="_blank" rel="noopener" class="btn-detail" title="Buka / unduh berkas PDF">
@@ -138,7 +140,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center empty-state-box">
+                            <td colspan="9" class="text-center empty-state-box">
                                 <p style="margin: 8px 0; color: var(--ink-soft); font-size: 14px;">Belum ada raport.</p>
                             </td>
                         </tr>

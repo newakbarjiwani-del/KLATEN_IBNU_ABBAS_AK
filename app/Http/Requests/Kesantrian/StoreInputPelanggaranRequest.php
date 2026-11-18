@@ -20,7 +20,7 @@ class StoreInputPelanggaranRequest extends FormRequest
         $note = $this->input('keterangan');
 
         $this->merge([
-            'nocust' => trim((string) $this->input('nocust')),
+            'nocust' => Santri::nisDariTeks(trim((string) $this->input('nocust'))) ?? trim((string) $this->input('nocust')),
             'keterangan' => is_string($note) ? trim($note) : $note,
         ]);
     }
@@ -34,7 +34,7 @@ class StoreInputPelanggaranRequest extends FormRequest
             'jenis' => ['required', 'in:pelanggaran,remisi'],
             'thn_aka' => ['required', 'string', 'max:30'],
             'tgl_kejadian' => ['required', 'date'],
-            'nocust' => ['required', 'string', 'max:10'],
+            'nocust' => ['required', 'string', 'max:70'],
             'id_langgar' => ['required', 'integer'],
             'skor' => ['exclude_if:jenis,pelanggaran', 'required', 'integer', 'between:0,32767'],
             'keterangan' => ['nullable', 'string', 'max:1000'],
@@ -52,8 +52,8 @@ class StoreInputPelanggaranRequest extends FormRequest
             'thn_aka.required' => 'Tahun akademik wajib dipilih.',
             'tgl_kejadian.required' => 'Tanggal wajib diisi.',
             'tgl_kejadian.date' => 'Tanggal tidak valid.',
-            'nocust.required' => 'NIS wajib diisi.',
-            'nocust.max' => 'NIS paling panjang 10 karakter.',
+            'nocust.required' => 'NIS atau nama wajib diisi.',
+            'nocust.max' => 'NIS atau nama terlalu panjang.',
             'id_langgar.required' => 'Pelanggaran wajib dipilih.',
             'skor.required' => 'Skor remisi wajib diisi.',
             'skor.integer' => 'Skor harus berupa angka.',
@@ -74,7 +74,7 @@ class StoreInputPelanggaranRequest extends FormRequest
             }
 
             if (is_string($nis) && $nis !== '' && ! Santri::query()->where('NOCUST', $nis)->exists()) {
-                $validator->errors()->add('nocust', 'NIS tidak ditemukan.');
+                $validator->errors()->add('nocust', 'Siswa tidak ditemukan. Ketik NIS atau nama, lalu pilih dari daftar.');
             }
 
             if (is_numeric($id) && ! ReferensiPelanggaran::query()->whereKey((int) $id)->exists()) {

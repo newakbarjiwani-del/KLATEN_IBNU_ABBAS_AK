@@ -33,6 +33,7 @@ class HafalanController extends Controller
         $periode = trim((string) $request->query('periode', ''));
         $dari = $this->date((string) $request->query('dari', ''));
         $sampai = $this->date((string) $request->query('sampai', ''));
+        $search = mb_substr(trim((string) $request->query('q', '')), 0, 70);
 
         $groups = [
             'periode' => ['sql' => 'periode', 'label' => 'Periode'],
@@ -50,7 +51,10 @@ class HafalanController extends Controller
         try {
             $periods = $this->mergedPeriods($mode);
             $records = ColumnGroup::order(
-                DB::query()->fromSub($this->combined($mode, $periode, $dari, $sampai, $groupKey === 'NMCUST'), 'gabungan'),
+                $this->filterSiswa(
+                    DB::query()->fromSub($this->combined($mode, $periode, $dari, $sampai, $groupKey === 'NMCUST'), 'gabungan'),
+                    $search,
+                ),
                 $groupKey,
                 $groups,
             )
@@ -86,7 +90,7 @@ class HafalanController extends Controller
             'periods' => $periods,
             'periodLabel' => 'Periode',
             'selectedPeriod' => $periode,
-            'search' => '',
+            'search' => $search,
             'mode' => $mode,
             'dari' => $dari,
             'sampai' => $sampai,
@@ -278,10 +282,14 @@ class HafalanController extends Controller
         $periode = trim((string) $request->query('periode', ''));
         $dari = $this->date((string) $request->query('dari', ''));
         $sampai = $this->date((string) $request->query('sampai', ''));
+        $search = mb_substr(trim((string) $request->query('q', '')), 0, 70);
 
         try {
-            $records = DB::query()
-                ->fromSub($this->combined($mode, $periode, $dari, $sampai), 'gabungan')
+            $records = $this->filterSiswa(
+                DB::query()
+                    ->fromSub($this->combined($mode, $periode, $dari, $sampai), 'gabungan'),
+                $search,
+            )
                 ->orderByDesc('tgl')
                 ->orderByDesc('urut')
                 ->get();
@@ -482,6 +490,31 @@ class HafalanController extends Controller
         }
 
         return $setoran->unionAll($murajaah);
+    }
+
+    private function filterSiswa(Builder $query, string $search): Builder
+    {
+        if ($search === '') {
+            return $query;
+        }
+
+        $like = '%'.addcslashes($search, '%_\\').'%';
+        $ids = DB::table('scctcust')
+            ->where('NMCUST', 'like', $like)
+            ->limit(300)
+            ->pluck('NOCUST')
+            ->map(fn (mixed $id): string => trim((string) $id))
+            ->filter(fn (string $id): bool => $id !== '')
+            ->unique()
+            ->values();
+
+        return $query->where(function (Builder $inner) use ($like, $ids): void {
+            $inner->where('NOCUST', 'like', $like);
+
+            if ($ids->isNotEmpty()) {
+                $inner->orWhereIn('NOCUST', $ids->all());
+            }
+        });
     }
 
     private function setoranRows(bool $withName): Builder

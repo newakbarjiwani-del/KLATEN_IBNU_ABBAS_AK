@@ -79,6 +79,8 @@ class InputPelanggaranTest extends TestCase
             ->assertSee('Ahmad')
             ->assertSee('terlambat iqomah')
             ->assertSee('name="jenis"', false)
+            ->assertSee('NIS / Nama')
+            ->assertSee('Ketik NIS atau nama santri...')
             ->assertDontSee('belum diisi.');
     }
 
@@ -86,7 +88,9 @@ class InputPelanggaranTest extends TestCase
     {
         $this->seedMasters();
 
-        $this->actingAs($this->kesantrianAdmin())
+        $admin = $this->kesantrianAdmin();
+
+        $this->actingAs($admin)
             ->post('/kesantrian/input-pelanggaran', [
                 'jenis' => 'pelanggaran',
                 'thn_aka' => '2024/2025 - GANJIL',
@@ -106,6 +110,22 @@ class InputPelanggaranTest extends TestCase
             'id_pelanggaran' => 1,
             'id_remisi' => null,
             'keterangan' => 'masbuq',
+        ]);
+
+        $this->actingAs($admin)
+            ->post('/kesantrian/input-pelanggaran', [
+                'jenis' => 'pelanggaran',
+                'thn_aka' => '2024/2025 - GANJIL',
+                'tgl_kejadian' => '2026-10-29',
+                'nocust' => 'Ahmad',
+                'id_langgar' => 1,
+                'keterangan' => 'lewat nama',
+            ])
+            ->assertRedirect(route('kesantrian.menu', 'input-pelanggaran'));
+
+        $this->assertDatabaseHas('akademik_pelanggaran', [
+            'NOCUST' => '1301154344',
+            'keterangan' => 'lewat nama',
         ]);
     }
 

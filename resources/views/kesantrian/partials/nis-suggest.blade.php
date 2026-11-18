@@ -27,7 +27,11 @@
             var choose = function (item) {
                 input.value = item.nis;
                 if (nama) {
-                    nama.value = item.nama;
+                    if (nama.tagName === 'INPUT' || nama.tagName === 'TEXTAREA') {
+                        nama.value = item.nama;
+                    } else {
+                        nama.textContent = item.nama;
+                    }
                 }
                 if (kelas) {
                     kelas.value = item.kelas_kunci || '';
@@ -63,7 +67,11 @@
                 window.clearTimeout(timer);
                 if (value === '') {
                     if (nama) {
-                        nama.value = '';
+                        if (nama.tagName === 'INPUT' || nama.tagName === 'TEXTAREA') {
+                            nama.value = '';
+                        } else {
+                            nama.textContent = '';
+                        }
                     }
                     if (kelas) {
                         kelas.value = '';

@@ -25,15 +25,19 @@
                 </select>
             </label>
             <label>
-                NIS
+                NIS / Nama
                 <span class="nis-lookup">
-                    <input name="nocust" value="{{ old('nocust') }}" maxlength="10" placeholder="Ketik NIS santri..." autocomplete="off" required data-nis-suggest="{{ route('kesantrian.santri.suggest') }}" data-nis-target="nama-santri">
+                    <input name="nocust" value="{{ old('nocust') }}" maxlength="70" placeholder="Ketik NIS atau nama santri..." autocomplete="off" required data-nis-suggest="{{ route('kesantrian.santri.suggest') }}" data-nis-target="nama-santri">
                     <div class="nis-menu" hidden></div>
                 </span>
             </label>
             <label>
                 Nama
                 <input id="nama-santri" value="" placeholder="Otomatis terisi dari NIS" readonly>
+            </label>
+            <label>
+                Tanggal upload
+                <input type="date" name="tgl_upload" value="{{ old('tgl_upload', now()->toDateString()) }}" required>
             </label>
             <label>
                 Berkas PDF
@@ -58,4 +62,6 @@
             </div>
         </form>
     </section>
+
+    @include('partials.upload-sukses')
 @endsection

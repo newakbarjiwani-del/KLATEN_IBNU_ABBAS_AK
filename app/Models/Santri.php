@@ -31,6 +31,32 @@ class Santri extends Model
         return trim((string) $this->NMCUST);
     }
 
+    public static function nisDariTeks(string $teks): ?string
+    {
+        $teks = trim($teks);
+
+        if ($teks === '') {
+            return null;
+        }
+
+        $byNis = static::query()->where('NOCUST', $teks)->first();
+
+        if ($byNis !== null) {
+            return trim((string) $byNis->NOCUST);
+        }
+
+        $byName = static::query()
+            ->whereRaw('TRIM(NMCUST) = ?', [$teks])
+            ->limit(2)
+            ->get();
+
+        if ($byName->count() !== 1) {
+            return null;
+        }
+
+        return trim((string) $byName->first()->NOCUST);
+    }
+
     /**
      * @return Collection<int, string>
      */

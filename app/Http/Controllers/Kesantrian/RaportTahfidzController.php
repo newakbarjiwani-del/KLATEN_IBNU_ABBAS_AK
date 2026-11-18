@@ -17,6 +17,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -63,16 +64,14 @@ class RaportTahfidzController extends Controller
             ];
             $groupKey = ColumnGroup::key($request, $columnGroups);
             $records = ColumnGroup::order($this->filteredRaport($request), $groupKey, $columnGroups)
-                ->orderBy('c.NMCUST')
-                ->orderBy('r.NOCUST')
-                ->orderByDesc('r.THN_AKA')
-                ->orderBy('r.UJIAN')
+                ->orderByDesc('r.urut')
                 ->paginate(30)
                 ->withQueryString();
 
             $records->getCollection()->transform(function (object $record): object {
                 $record->tautan = $this->files->url(RaportFileStorage::TAHFIDZ, $record->FILE_RAPOT);
                 $record->tersedia = $record->tautan !== null;
+                $record->tanggal_upload = $this->tanggalUpload($record->tgl_upload ?? null);
 
                 return $record;
             });
@@ -102,20 +101,18 @@ class RaportTahfidzController extends Controller
         $filename = $this->files->filename($request->file('berkas')->getClientOriginalName());
 
         try {
+            $nis = $request->string('nocust')->toString();
+            $year = $request->string('thn_aka')->toString();
+            $exam = $request->string('ujian')->toString();
             $filename = $this->files->store(
                 RaportFileStorage::TAHFIDZ,
                 $request->file('berkas'),
                 $filename,
-                $request->string('nocust')->toString(),
-                $request->string('thn_aka')->toString(),
-                $request->string('ujian')->toString(),
+                $nis,
+                $year,
+                $exam,
             );
-            RaportTahfidz::query()->create([
-                'NOCUST' => $request->string('nocust')->toString(),
-                'THN_AKA' => $request->string('thn_aka')->toString(),
-                'FILE_RAPOT' => $filename,
-                'UJIAN' => $request->string('ujian')->toString(),
-            ]);
+            $this->simpanBaris(RaportTahfidz::class, $nis, $year, $exam, $filename, $this->tanggalDariPermintaan($request));
         } catch (RaportStorageException $exception) {
             return back()
                 ->withErrors(['berkas' => $exception->getMessage()])
@@ -126,22 +123,25 @@ class RaportTahfidzController extends Controller
 
         return redirect()
             ->route('kesantrian.menu', 'upload-raport')
-            ->with('status', 'Raport '.$filename.' diunggah.');
+            ->with('status', 'Data berhasil diunggah.');
     }
 
     public function suggest(Request $request): JsonResponse
     {
         $term = trim((string) $request->query('q', ''));
 
-        if ($term === '' || strlen($term) > 15) {
+        if ($term === '' || mb_strlen($term) > 70) {
             return response()->json(['items' => []]);
         }
 
-        $like = addcslashes($term, '%_\\').'%';
+        $like = '%'.addcslashes($term, '%_\\').'%';
 
         try {
             $items = Santri::query()
-                ->where('NOCUST', 'like', $like)
+                ->where(function ($query) use ($like): void {
+                    $query->where('NOCUST', 'like', $like)
+                        ->orWhere('NMCUST', 'like', $like);
+                })
                 ->orderBy('NOCUST')
                 ->limit(8)
                 ->get(['NOCUST', 'NMCUST']);
@@ -184,16 +184,13 @@ class RaportTahfidzController extends Controller
     {
         try {
             $records = $this->filteredRaport($request)
-                ->orderBy('c.NMCUST')
-                ->orderBy('r.NOCUST')
-                ->orderByDesc('r.THN_AKA')
-                ->orderBy('r.UJIAN')
+                ->orderByDesc('r.urut')
                 ->get();
         } catch (QueryException) {
             return $this->databaseUnavailable();
         }
 
-        $rows = [['NIS', 'Nama', 'Kelas', 'Kelompok', 'Jenjang', 'Tahun akademik', 'Ujian', 'File raport']];
+        $rows = [['NIS', 'Nama', 'Kelas', 'Kelompok', 'Jenjang', 'Tahun akademik', 'Ujian', 'File raport', 'Tanggal upload']];
 
         foreach ($records as $record) {
             $rows[] = [
@@ -205,6 +202,7 @@ class RaportTahfidzController extends Controller
                 trim((string) $record->THN_AKA),
                 $record->UJIAN === 'AKHIR' ? 'Akhir' : 'Mid',
                 trim((string) $record->FILE_RAPOT),
+                $this->tanggalUpload($record->tgl_upload ?? null),
             ];
         }
 
@@ -235,6 +233,7 @@ class RaportTahfidzController extends Controller
                 'r.THN_AKA',
                 'r.FILE_RAPOT',
                 'r.UJIAN',
+                'r.tgl_upload',
                 'c.NMCUST',
                 'c.DESC02 as kelas',
                 'c.DESC03 as kelompok',
@@ -262,6 +261,48 @@ class RaportTahfidzController extends Controller
         }
 
         return $query;
+    }
+
+    /**
+     * @param  class-string<RaportTahfidz>  $model
+     */
+    private function simpanBaris(string $model, string $nis, string $year, string $exam, string $filename, string $tanggal): void
+    {
+        $existing = $model::query()
+            ->where('NOCUST', $nis)
+            ->where('THN_AKA', $year)
+            ->where('FILE_RAPOT', $filename)
+            ->where('UJIAN', $exam)
+            ->latest('urut')
+            ->first();
+
+        if ($existing !== null) {
+            $existing->update(['tgl_upload' => $tanggal]);
+
+            return;
+        }
+
+        $model::query()->create([
+            'NOCUST' => $nis,
+            'THN_AKA' => $year,
+            'FILE_RAPOT' => $filename,
+            'UJIAN' => $exam,
+            'tgl_upload' => $tanggal,
+        ]);
+    }
+
+    private function tanggalDariPermintaan(Request $request): string
+    {
+        return $request->date('tgl_upload')?->toDateString() ?? now()->toDateString();
+    }
+
+    private function tanggalUpload(mixed $value): string
+    {
+        if (! filled($value)) {
+            return '';
+        }
+
+        return Carbon::parse($value)->format('d/m/Y');
     }
 
     private function databaseUnavailable(): RedirectResponse

@@ -145,6 +145,18 @@ class TahfidzDashboardTest extends TestCase
             ->assertDontSee('Budi');
 
         $this->actingAs($admin)
+            ->get('/tahfidz/data-setoran?q=Ahmad')
+            ->assertOk()
+            ->assertSee('Ahmad')
+            ->assertDontSee('Budi');
+
+        $this->actingAs($admin)
+            ->get('/tahfidz/data-setoran?q=1402000001')
+            ->assertOk()
+            ->assertSee('Budi')
+            ->assertDontSee('Ahmad');
+
+        $this->actingAs($admin)
             ->get('/tahfidz/tahfidz')
             ->assertRedirect('/tahfidz/data-setoran');
 

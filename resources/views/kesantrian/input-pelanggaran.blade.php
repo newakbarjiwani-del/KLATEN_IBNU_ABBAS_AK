@@ -36,15 +36,12 @@
                 <input type="date" name="tgl_kejadian" value="{{ old('tgl_kejadian', now()->toDateString()) }}" required>
             </label>
             <label>
-                NIS
+                NIS / Nama
                 <span class="nis-lookup">
-                    <input name="nocust" value="{{ old('nocust', $selectedNis) }}" maxlength="10" autocomplete="off" required data-nis-suggest="{{ route('kesantrian.santri.suggest') }}" data-nis-target="nama-santri">
+                    <input name="nocust" value="{{ old('nocust', $selectedNis) }}" maxlength="70" placeholder="Ketik NIS atau nama santri..." autocomplete="off" required data-nis-suggest="{{ route('kesantrian.santri.suggest') }}" data-nis-target="nama-santri">
                     <div class="nis-menu" hidden></div>
                 </span>
-            </label>
-            <label>
-                Nama
-                <input id="nama-santri" value="{{ $selectedSantri?->nama() ?? '' }}" readonly>
+                <small id="nama-santri">{{ $selectedSantri?->nama() }}</small>
             </label>
             <label>
                 Pelanggaran

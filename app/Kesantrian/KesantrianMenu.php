@@ -14,7 +14,7 @@ class KesantrianMenu
                 [
                     'slug' => 'tahun-akademik',
                     'label' => 'Master Tahun Akademik',
-                    'summary' => 'Kelola tahun ajaran dan semester. Nomor urut berjalan dari yang terkecil.',
+                    'summary' => 'Kelola tahun ajaran dan semester. Tahun terbaru ditampilkan di atas.',
                 ],
                 [
                     'slug' => 'master-pelanggaran',

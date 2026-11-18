@@ -17,7 +17,7 @@ class StoreRaportAkademikRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'nocust' => trim((string) $this->input('nocust')),
+            'nocust' => Santri::nisDariTeks(trim((string) $this->input('nocust'))) ?? trim((string) $this->input('nocust')),
             'thn_aka' => trim((string) $this->input('thn_aka')),
             'ujian' => strtoupper(trim((string) $this->input('ujian'))),
         ]);
@@ -30,9 +30,10 @@ class StoreRaportAkademikRequest extends FormRequest
     {
         return [
             'thn_aka' => ['required', 'string', 'max:20'],
-            'nocust' => ['required', 'string', 'max:10'],
+            'nocust' => ['required', 'string', 'max:70'],
             'kelas' => ['required', 'string'],
             'ujian' => ['required', 'in:MID,AKHIR'],
+            'tgl_upload' => ['nullable', 'date'],
             'berkas' => ['required', 'file', 'extensions:pdf', 'max:10240'],
         ];
     }
@@ -45,8 +46,8 @@ class StoreRaportAkademikRequest extends FormRequest
         return [
             'thn_aka.required' => 'Tahun akademik wajib dipilih.',
             'thn_aka.max' => 'Tahun akademik terlalu panjang.',
-            'nocust.required' => 'NIS wajib diisi.',
-            'nocust.max' => 'NIS paling panjang 10 karakter.',
+            'nocust.required' => 'NIS atau nama wajib diisi.',
+            'nocust.max' => 'NIS atau nama terlalu panjang.',
             'kelas.required' => 'Kelas wajib dipilih.',
             'ujian.required' => 'Jenis ujian wajib dipilih.',
             'ujian.in' => 'Jenis ujian harus Mid atau Akhir.',
@@ -73,7 +74,7 @@ class StoreRaportAkademikRequest extends FormRequest
             $santri = Santri::query()->where('NOCUST', $nis)->first();
 
             if ($santri === null) {
-                $validator->errors()->add('nocust', 'NIS tidak ditemukan.');
+                $validator->errors()->add('nocust', 'Siswa tidak ditemukan. Ketik NIS atau nama, lalu pilih dari daftar.');
 
                 return;
             }

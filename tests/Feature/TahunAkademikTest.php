@@ -44,7 +44,7 @@ class TahunAkademikTest extends TestCase
             ->assertSee('2023/2024 - GANJIL')
             ->assertSee('2023/2024 - GENAP')
             ->assertSee('class="col-no"', false)
-            ->assertSee('Nomor urut berjalan dari yang terkecil.')
+            ->assertSee('Tahun terbaru ditampilkan di atas.')
             ->assertSee('name="tahun"', false)
             ->assertSee('id="add-tahun"', false)
             ->assertSee('page-loader', false)
@@ -52,7 +52,7 @@ class TahunAkademikTest extends TestCase
 
         $html = $response->getContent();
         $this->assertTrue(
-            strpos($html, '2023/2024 - GANJIL') < strpos($html, '2023/2024 - GENAP')
+            strpos($html, '2023/2024 - GENAP') < strpos($html, '2023/2024 - GANJIL')
         );
     }
 

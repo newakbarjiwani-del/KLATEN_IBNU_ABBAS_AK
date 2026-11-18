@@ -15,7 +15,7 @@ class TahunAkademikController extends Controller
     public function index(): View|RedirectResponse
     {
         try {
-            $years = TahunAkademik::query()->orderBy('urut')->get();
+            $years = TahunAkademik::query()->orderByDesc('thn_aka')->get();
         } catch (QueryException) {
             return $this->databaseUnavailable();
         }

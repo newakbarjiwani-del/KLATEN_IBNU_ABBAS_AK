@@ -22,5 +22,6 @@ class RaportTahfidz extends Model
         'THN_AKA',
         'FILE_RAPOT',
         'UJIAN',
+        'tgl_upload',
     ];
 }

@@ -49,6 +49,7 @@ class AkademikRaportTest extends TestCase
             $table->string('THN_AKA', 20)->nullable();
             $table->string('FILE_RAPOT', 250)->nullable();
             $table->string('UJIAN', 7)->nullable();
+            $table->date('tgl_upload')->nullable();
         });
     }
 
@@ -92,7 +93,7 @@ class AkademikRaportTest extends TestCase
                 'berkas' => UploadedFile::fake()->create('nilai.pdf', 20, 'application/pdf'),
             ])
             ->assertRedirect(route('akademik.menu', 'upload-raport'))
-            ->assertSessionHas('status', 'Raport nilai.pdf diunggah.');
+            ->assertSessionHas('status', 'Data berhasil diunggah.');
 
         $this->assertDatabaseHas('akademik_rapot', [
             'NOCUST' => '1301154344',
@@ -114,6 +115,39 @@ class AkademikRaportTest extends TestCase
         $this->actingAs($admin)
             ->get('/akademik/data-raport/1/berkas')
             ->assertRedirect('http://101.50.2.56/Klaten_IbnuAbbas/uploadrapot/uploads/nilai.pdf');
+
+        $this->assertSame(1, RaportAkademik::query()->count());
+    }
+
+    public function test_upload_updates_the_existing_row_instead_of_duplicating_it(): void
+    {
+        Http::preventStrayRequests();
+        Http::fake([
+            'http://101.50.2.56/Klaten_IbnuAbbas/uploadrapot/uploads/*' => Http::response('', 404),
+            'http://101.50.2.56/Klaten_IbnuAbbas/uploadrapot/index.php' => Http::response('The file nilai.pdf has been uploaded.'),
+        ]);
+        $this->seedMasters();
+        RaportAkademik::query()->create([
+            'NOCUST' => '1301154344',
+            'THN_AKA' => '2024/2025 - GANJIL',
+            'FILE_RAPOT' => 'nilai.pdf',
+            'UJIAN' => 'AKHIR',
+        ]);
+
+        $this->actingAs($this->admin())
+            ->post('/akademik/upload-raport', [
+                'thn_aka' => '2024/2025 - GANJIL',
+                'nocust' => 'Ahmad',
+                'kelas' => 'SMP|||7A|||A',
+                'ujian' => 'AKHIR',
+                'tgl_upload' => '2026-11-17',
+                'berkas' => UploadedFile::fake()->create('nilai.pdf', 20, 'application/pdf'),
+            ])
+            ->assertRedirect(route('akademik.menu', 'upload-raport'))
+            ->assertSessionHas('status', 'Data berhasil diunggah.');
+
+        $this->assertSame(1, RaportAkademik::query()->count());
+        $this->assertSame('2026-11-17', RaportAkademik::query()->value('tgl_upload'));
     }
 
     public function test_upload_stays_empty_when_the_report_server_is_unreachable(): void

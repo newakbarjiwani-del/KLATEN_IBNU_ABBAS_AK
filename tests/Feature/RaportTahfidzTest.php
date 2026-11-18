@@ -49,6 +49,7 @@ class RaportTahfidzTest extends TestCase
             $table->string('THN_AKA', 20)->nullable();
             $table->string('FILE_RAPOT', 250)->nullable();
             $table->string('UJIAN', 7)->nullable();
+            $table->date('tgl_upload')->nullable();
         });
     }
 
@@ -83,6 +84,7 @@ class RaportTahfidzTest extends TestCase
             ->assertSee('2024/2025 - GANJIL')
             ->assertSee('row-group')
             ->assertSee('Akhir')
+            ->assertSee('Tanggal upload')
             ->assertSeeInOrder(['Ahmad', 'Budi'])
             ->assertDontSee('belum diisi.');
 
@@ -110,7 +112,7 @@ class RaportTahfidzTest extends TestCase
                 'berkas' => UploadedFile::fake()->create('hafalan.pdf', 20, 'application/pdf'),
             ])
             ->assertRedirect(route('kesantrian.menu', 'upload-raport'))
-            ->assertSessionHas('status', 'Raport hafalan.pdf diunggah.');
+            ->assertSessionHas('status', 'Data berhasil diunggah.');
 
         $this->assertDatabaseHas('akademik_rapot_tahfidzh', [
             'NOCUST' => '1301154344',
@@ -127,6 +129,36 @@ class RaportTahfidzTest extends TestCase
                 && ($parts['ujian']['contents'] ?? null) === 'MID'
                 && ($parts['file']['filename'] ?? null) === 'hafalan.pdf';
         });
+        $this->assertSame(1, RaportTahfidz::query()->count());
+    }
+
+    public function test_upload_does_not_add_a_second_row_when_the_file_is_already_recorded(): void
+    {
+        Http::preventStrayRequests();
+        Http::fake([
+            'http://101.50.2.56/Klaten_IbnuAbbas/uploadrapottahfidzh/uploads/*' => Http::response('', 404),
+            'http://101.50.2.56/Klaten_IbnuAbbas/uploadrapottahfidzh/index.php' => Http::response('The file hafalan.pdf has been uploaded.'),
+        ]);
+        $this->seedMasters();
+        RaportTahfidz::query()->create([
+            'NOCUST' => '1301154344',
+            'THN_AKA' => '2024/2025 - GANJIL',
+            'FILE_RAPOT' => 'hafalan.pdf',
+            'UJIAN' => 'MID',
+        ]);
+
+        $this->actingAs($this->admin())
+            ->post('/kesantrian/upload-raport', [
+                'thn_aka' => '2024/2025 - GANJIL',
+                'nocust' => 'Ahmad',
+                'ujian' => 'MID',
+                'tgl_upload' => '2026-11-17',
+                'berkas' => UploadedFile::fake()->create('hafalan.pdf', 20, 'application/pdf'),
+            ])
+            ->assertRedirect(route('kesantrian.menu', 'upload-raport'));
+
+        $this->assertSame(1, RaportTahfidz::query()->count());
+        $this->assertSame('2026-11-17', RaportTahfidz::query()->value('tgl_upload'));
     }
 
     public function test_nis_lookup_returns_the_student_name(): void
@@ -143,12 +175,19 @@ class RaportTahfidzTest extends TestCase
     {
         $this->seedMasters();
 
-        $this->actingAs($this->admin())
+        $admin = $this->admin();
+
+        $this->actingAs($admin)
             ->getJson('/kesantrian/santri?q=1301')
             ->assertOk()
             ->assertJsonCount(1, 'items')
             ->assertJsonPath('items.0.nis', '1301154344')
             ->assertJsonPath('items.0.nama', 'Ahmad');
+
+        $this->actingAs($admin)
+            ->getJson('/kesantrian/santri?q=Ahmad')
+            ->assertOk()
+            ->assertJsonPath('items.0.nis', '1301154344');
     }
 
     private function seedMasters(): void

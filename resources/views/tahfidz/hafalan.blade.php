@@ -41,6 +41,10 @@
                         @endforeach
                     </select>
                 </label>
+                <label>
+                    NIS / nama
+                    <input name="q" value="{{ $search }}" placeholder="Ketik NIS atau nama santri..." maxlength="70" autocomplete="off">
+                </label>
                 <div class="filter-actions">
                     <a href="{{ route('tahfidz.menu', $current['slug']) }}" class="ghost">Reset</a>
                     <button type="submit">Cari</button>
