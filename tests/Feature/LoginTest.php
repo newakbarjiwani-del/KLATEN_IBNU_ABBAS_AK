@@ -23,6 +23,8 @@ class LoginTest extends TestCase
             $table->string('kel', 20)->nullable();
             $table->integer('urut')->nullable();
             $table->string('password')->nullable();
+            $table->string('unit', 50)->nullable();
+            $table->string('akses', 30)->nullable();
         });
     }
 
@@ -31,9 +33,9 @@ class LoginTest extends TestCase
         $this->get('/')->assertRedirect(route('login'));
         $this->get('/login')
             ->assertOk()
-            ->assertSee('Aplikasi')
+            ->assertDontSee('name="aplikasi"', false)
+            ->assertSee('Username')
             ->assertSee('Tahfidz')
-            ->assertSee('name="aplikasi"', false)
             ->assertDontSee('toastify.min.js', false)
             ->assertSee('name="description"', false)
             ->assertSee('index, follow', false)
@@ -51,27 +53,21 @@ class LoginTest extends TestCase
         $this->account('admkes', 'admkes', 'Admin Kesantrian', 'pintu-kesantrian');
         $this->account('admaka', 'admaka', 'Admin Akademik', 'pintu-akademik');
 
-        $this->post('/login', ['aplikasi' => 'admtah', 'users' => 'admtah', 'password' => 'pintu-tahfidz'])
+        $this->post('/login', ['users' => 'admtah', 'password' => 'pintu-tahfidz'])
             ->assertRedirect('/tahfidz');
         $this->get('/tahfidz')->assertOk()->assertSee('Admin Tahfidz');
         $this->get('/kesantrian')->assertRedirect('/tahfidz');
 
         auth()->logout();
 
-        $this->from('/login')
-            ->post('/login', ['aplikasi' => 'admkes', 'users' => 'admtah', 'password' => 'pintu-tahfidz'])
-            ->assertRedirect('/login')
-            ->assertSessionHasErrors('aplikasi');
-        $this->assertGuest();
-
-        $this->post('/login', ['aplikasi' => 'admkes', 'users' => 'admkes', 'password' => 'pintu-kesantrian'])
+        $this->post('/login', ['users' => 'admkes', 'password' => 'pintu-kesantrian'])
             ->assertRedirect('/kesantrian');
         $this->get('/kesantrian')->assertOk()->assertSee('Kesantrian');
         $this->get('/akademik')->assertRedirect('/kesantrian');
 
         auth()->logout();
 
-        $this->post('/login', ['aplikasi' => 'admaka', 'users' => 'admaka', 'password' => 'pintu-akademik'])
+        $this->post('/login', ['users' => 'admaka', 'password' => 'pintu-akademik'])
             ->assertRedirect('/akademik');
         $this->get('/akademik')->assertOk()->assertSee('Raport Akademik');
         $this->get('/tahfidz')->assertRedirect('/akademik');
@@ -89,23 +85,22 @@ class LoginTest extends TestCase
         ]);
 
         $this->from('/login')
-            ->post('/login', ['aplikasi' => 'admtah', 'users' => 'admtah', 'password' => 'salah'])
+            ->post('/login', ['users' => 'admtah', 'password' => 'salah'])
             ->assertRedirect('/login')
             ->assertSessionHasErrors('users');
         $this->followRedirects(
-            $this->from('/login')->post('/login', ['aplikasi' => 'admtah', 'users' => 'admtah', 'password' => 'masih-salah'])
+            $this->from('/login')->post('/login', ['users' => 'admtah', 'password' => 'masih-salah'])
         )->assertSee('toastify.min.js', false)
             ->assertSee('Username atau password salah.', false);
         $this->assertGuest();
 
-        $this->from('/login')
-            ->post('/login', ['aplikasi' => 'admtah', 'users' => 'admkeu', 'password' => 'pintu-keuangan'])
-            ->assertRedirect('/login')
-            ->assertSessionHasErrors('aplikasi');
+        $this->followRedirects(
+            $this->from('/login')->post('/login', ['users' => 'admkeu', 'password' => 'pintu-keuangan'])
+        )->assertSee('Akun ini belum memiliki akses aplikasi.', false);
         $this->assertGuest();
 
         $this->from('/login')
-            ->post('/login', ['aplikasi' => 'admtah', 'users' => 'kosong', 'password' => 'apa-saja'])
+            ->post('/login', ['users' => 'kosong', 'password' => 'apa-saja'])
             ->assertRedirect('/login')
             ->assertSessionHasErrors('users');
         $this->assertGuest();
@@ -122,7 +117,6 @@ class LoginTest extends TestCase
         ]);
 
         $this->post('/login', [
-            'aplikasi' => 'admtah',
             'users' => 'admtah',
             'password' => 'pintu-lama',
         ])->assertRedirect('/tahfidz');
@@ -145,7 +139,6 @@ class LoginTest extends TestCase
         ]);
 
         $this->post('/login', [
-            'aplikasi' => 'admaka',
             'users' => 'admaka',
             'password' => 'pintu',
         ])->assertRedirect('/akademik');
@@ -174,7 +167,6 @@ class LoginTest extends TestCase
         ]);
 
         $this->post('/login', [
-            'aplikasi' => 'admtah',
             'users' => 'admtah',
             'password' => 'kunci-tahfidz',
         ])->assertRedirect('/tahfidz');
@@ -186,28 +178,67 @@ class LoginTest extends TestCase
         auth()->logout();
 
         $this->post('/login', [
-            'aplikasi' => 'admkes',
             'users' => 'admkes',
             'password' => 'kunci-kesantrian',
         ])->assertRedirect('/kesantrian');
 
         auth()->logout();
+    }
 
-        $this->from('/login')
-            ->post('/login', [
-                'aplikasi' => 'admaka',
-                'users' => 'admtah',
-                'password' => 'kunci-tahfidz',
-            ])
-            ->assertRedirect('/login')
-            ->assertSessionHasErrors('aplikasi');
+    public function test_unit_login_opens_only_the_granted_menus(): void
+    {
+        CyberKey::query()->create([
+            'users' => 'admkuttab',
+            'ket' => 'Admin Kuttab',
+            'kel' => 'unit',
+            'unit' => 'KUTTAB',
+            'akses' => '1,2,3',
+            'password' => 'ibnuabbas',
+        ]);
+        CyberKey::query()->create([
+            'users' => 'admsmptah',
+            'ket' => 'Admin Tahfidz SMP',
+            'kel' => 'admtah',
+            'unit' => 'SMP',
+            'akses' => '2',
+            'password' => 'ibnuabbas',
+        ]);
+
+        $this->post('/login', ['users' => 'admkuttab', 'password' => 'ibnuabbas'])
+            ->assertRedirect('/beranda');
+
+        $this->get('/beranda')
+            ->assertOk()
+            ->assertSee('KUTTAB')
+            ->assertSee('Kesantrian')
+            ->assertSee('Tahfidz')
+            ->assertSee('Raport Akademik')
+            ->assertSee('Master Tahun Akademik')
+            ->assertSee('Data Setoran dan Tahfidz');
+
+        $this->get('/kesantrian')->assertOk();
+        $this->get('/tahfidz')->assertOk();
+        $this->get('/akademik')->assertOk();
+
+        auth()->logout();
+
+        $this->post('/login', ['users' => 'admsmptah', 'password' => 'ibnuabbas'])
+            ->assertRedirect('/tahfidz');
+
+        $this->get('/tahfidz')
+            ->assertOk()
+            ->assertSee('SMP')
+            ->assertSee('Data Setoran dan Tahfidz')
+            ->assertDontSee('Master Tahun Akademik');
+        $this->get('/kesantrian')->assertRedirect('/tahfidz');
+        $this->get('/akademik')->assertRedirect('/tahfidz');
     }
 
     public function test_logout_returns_to_login(): void
     {
         $this->account('admaka', 'admaka', 'Admin Akademik', 'pintu-akademik');
 
-        $this->post('/login', ['aplikasi' => 'admaka', 'users' => 'admaka', 'password' => 'pintu-akademik']);
+        $this->post('/login', ['users' => 'admaka', 'password' => 'pintu-akademik']);
         $this->post('/logout')->assertRedirect(route('login'));
         $this->assertGuest();
         $this->get('/akademik')->assertRedirect(route('login'));
@@ -237,7 +268,7 @@ class LoginTest extends TestCase
         $this->assertSame(9, (int) $row->urut);
         $this->assertTrue(Hash::check('pintu-baru', $row->password));
 
-        $this->post('/login', ['aplikasi' => 'admtah', 'users' => 'admtah', 'password' => 'pintu-baru'])
+        $this->post('/login', ['users' => 'admtah', 'password' => 'pintu-baru'])
             ->assertRedirect('/tahfidz');
     }
 

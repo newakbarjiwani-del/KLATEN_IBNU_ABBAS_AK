@@ -25,6 +25,7 @@ class InputPelanggaranTest extends TestCase
             $table->string('kel', 20)->nullable();
             $table->integer('urut')->nullable();
             $table->string('password')->nullable();
+            $table->string('unit', 50)->nullable();
         });
 
         Schema::create('mst_thn_aka', function (Blueprint $table) {
@@ -37,6 +38,8 @@ class InputPelanggaranTest extends TestCase
             $table->text('jenis_pelangaran')->nullable();
             $table->smallInteger('skor')->nullable();
             $table->string('keterangan', 20)->nullable();
+            $table->string('unit', 20)->nullable();
+            $table->timestamp('deleted_at')->nullable();
         });
 
         Schema::create('scctcust', function (Blueprint $table) {
@@ -82,6 +85,8 @@ class InputPelanggaranTest extends TestCase
             ->assertSee('name="jenis"', false)
             ->assertSee('NIS / Nama')
             ->assertSee('Ketik NIS atau nama santri...')
+            ->assertSee('class="is-searchable"', false)
+            ->assertSee('Cari pelanggaran')
             ->assertDontSee('belum diisi.');
 
         $this->actingAs($admin)
@@ -175,6 +180,34 @@ class InputPelanggaranTest extends TestCase
         $this->actingAs($admin)
             ->getJson('/kesantrian/input-pelanggaran/santri?nis=000')
             ->assertNotFound();
+    }
+
+    public function test_input_dropdown_follows_the_account_unit(): void
+    {
+        TahunAkademik::query()->create(['thn_aka' => '2024/2025 - GANJIL']);
+        ReferensiPelanggaran::query()->create([
+            'jenis_pelangaran' => 'Pelanggaran SMP',
+            'skor' => 4,
+            'unit' => 'SMP',
+        ]);
+        ReferensiPelanggaran::query()->create([
+            'jenis_pelangaran' => 'Pelanggaran Kuttab',
+            'skor' => 6,
+            'unit' => 'KUTTAB',
+        ]);
+        $admin = CyberKey::query()->create([
+            'users' => 'admsmpkes',
+            'ket' => 'Admin Kesantrian SMP',
+            'kel' => 'admkes',
+            'unit' => 'SMP',
+            'password' => 'pintu-kesantrian',
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/kesantrian/input-pelanggaran')
+            ->assertOk()
+            ->assertSee('Pelanggaran SMP')
+            ->assertDontSee('Pelanggaran Kuttab');
     }
 
     private function seedMasters(): void

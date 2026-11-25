@@ -21,7 +21,7 @@ class EnsureSystemAccess
             return redirect()->route('login');
         }
 
-        if ($account->kelCode() !== $kel) {
+        if (! $account->allows($kel)) {
             return redirect()->route($account->homeRoute());
         }
 

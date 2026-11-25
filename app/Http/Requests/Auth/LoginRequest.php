@@ -27,7 +27,6 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'aplikasi' => ['required', 'in:'.implode(',', array_keys(CyberKey::SYSTEMS))],
             'users' => ['required', 'string', 'max:15'],
             'password' => ['required', 'string'],
         ];
@@ -39,8 +38,6 @@ class LoginRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'aplikasi.required' => 'Aplikasi wajib dipilih.',
-            'aplikasi.in' => 'Aplikasi tidak dikenal.',
             'users.required' => 'Username wajib diisi.',
             'users.max' => 'Username terlalu panjang.',
             'password.required' => 'Password wajib diisi.',
@@ -83,13 +80,11 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        $selectedKel = str_replace(' ', '', trim((string) $this->string('aplikasi')));
-
-        if ($account->homeRoute() === null || $account->kelCode() !== $selectedKel) {
+        if ($account->homeRoute() === null) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'aplikasi' => 'Akun ini bukan untuk aplikasi yang dipilih.',
+                'users' => 'Akun ini belum memiliki akses aplikasi.',
             ]);
         }
 

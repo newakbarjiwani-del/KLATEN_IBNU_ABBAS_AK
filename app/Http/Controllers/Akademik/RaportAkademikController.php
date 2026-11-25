@@ -17,6 +17,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -30,7 +31,6 @@ class RaportAkademikController extends Controller
     {
         try {
             $years = TahunAkademik::query()->orderByDesc('urut')->get();
-            $classes = Santri::daftarUnitKelas();
         } catch (QueryException) {
             return $this->databaseUnavailable();
         }
@@ -40,7 +40,6 @@ class RaportAkademikController extends Controller
             'groups' => AkademikMenu::groups(),
             'current' => AkademikMenu::find('upload-raport'),
             'years' => $years,
-            'classes' => $classes,
         ]);
     }
 
@@ -96,32 +95,180 @@ class RaportAkademikController extends Controller
 
     public function store(StoreRaportAkademikRequest $request): RedirectResponse
     {
-        $filename = $this->files->filename($request->file('berkas')->getClientOriginalName());
+        $year = $request->string('thn_aka')->toString();
+        $exam = $request->string('ujian')->toString();
+        $tanggal = $this->tanggalDariPermintaan($request);
+        $siap = [];
+        $dilewati = [];
+        $terpakai = [];
+
+        foreach ($request->file('berkas', []) as $file) {
+            if (! $file instanceof UploadedFile) {
+                continue;
+            }
+
+            $asli = $file->getClientOriginalName();
+            $pecahan = $this->pecahNamaBerkas($asli);
+
+            if ($pecahan === null) {
+                $dilewati[] = $asli.': nama berkas harus NIS_jenis.pdf, contoh 1301154344_type1.pdf.';
+
+                continue;
+            }
+
+            $kunci = strtolower($pecahan['berkas']);
+
+            if (isset($terpakai[$kunci])) {
+                $dilewati[] = $asli.': nama berkas ganda dalam unggahan ini.';
+
+                continue;
+            }
+
+            $terpakai[$kunci] = true;
+            $siap[] = [
+                'file' => $file,
+                'nis' => $pecahan['nis'],
+                'berkas' => $pecahan['berkas'],
+                'asli' => $asli,
+            ];
+        }
 
         try {
-            $nis = $request->string('nocust')->toString();
-            $year = $request->string('thn_aka')->toString();
-            $exam = $request->string('ujian')->toString();
-            $filename = $this->files->store(
-                RaportFileStorage::AKADEMIK,
-                $request->file('berkas'),
-                $filename,
-                $nis,
-                $year,
-                $exam,
-            );
-            $this->simpanBaris(RaportAkademik::class, $nis, $year, $exam, $filename, $this->tanggalDariPermintaan($request));
-        } catch (RaportStorageException $exception) {
-            return back()
-                ->withErrors(['berkas' => $exception->getMessage()])
-                ->withInput();
+            $ditemukan = Santri::query()
+                ->whereIn('NOCUST', array_column($siap, 'nis'))
+                ->get()
+                ->keyBy(fn (Santri $santri): string => trim((string) $santri->NOCUST));
         } catch (QueryException) {
             return $this->databaseUnavailable();
         }
 
+        $tersimpan = 0;
+
+        foreach ($siap as $item) {
+            $santri = $ditemukan->get($item['nis']);
+
+            if (! $santri instanceof Santri) {
+                $dilewati[] = $item['asli'].': siswa tidak ditemukan.';
+
+                continue;
+            }
+
+            try {
+                $filename = $this->files->store(
+                    RaportFileStorage::AKADEMIK,
+                    $item['file'],
+                    $item['berkas'],
+                    trim((string) $santri->NOCUST),
+                    $year,
+                    $exam,
+                );
+                $this->simpanBaris(
+                    RaportAkademik::class,
+                    trim((string) $santri->NOCUST),
+                    $year,
+                    $exam,
+                    $filename,
+                    $tanggal,
+                );
+                $tersimpan++;
+            } catch (RaportStorageException $exception) {
+                $dilewati[] = $item['asli'].': '.$exception->getMessage();
+            } catch (QueryException) {
+                return $this->databaseUnavailable();
+            }
+        }
+
+        if ($tersimpan === 0) {
+            return back()
+                ->withErrors(['berkas' => $dilewati === [] ? ['Tidak ada berkas yang diunggah.'] : $dilewati])
+                ->withInput();
+        }
+
+        $status = $tersimpan.' berkas berhasil diunggah.';
+
+        if ($dilewati !== []) {
+            $status .= ' Dilewati: '.implode(' ', $dilewati);
+        }
+
         return redirect()
             ->route('akademik.menu', 'upload-raport')
-            ->with('status', 'Data berhasil diunggah.');
+            ->with('status', $status);
+    }
+
+    public function pratinjau(Request $request): JsonResponse
+    {
+        $nama = $request->input('nama', []);
+
+        if (! is_array($nama)) {
+            return response()->json(['siswa' => [], 'gagal' => []]);
+        }
+
+        $siap = [];
+        $gagal = [];
+        $terpakai = [];
+
+        foreach (array_slice(array_values($nama), 0, 20) as $asli) {
+            if (! is_string($asli) || $asli === '' || mb_strlen($asli) > 250) {
+                continue;
+            }
+
+            $pecahan = $this->pecahNamaBerkas($asli);
+
+            if ($pecahan === null) {
+                $gagal[] = [
+                    'nama' => $asli,
+                    'alasan' => 'Nama berkas harus NIS_jenis.pdf.',
+                ];
+
+                continue;
+            }
+
+            $kunci = strtolower($pecahan['berkas']);
+
+            if (isset($terpakai[$kunci])) {
+                $gagal[] = [
+                    'nama' => $asli,
+                    'alasan' => 'Nama berkas ganda.',
+                ];
+
+                continue;
+            }
+
+            $terpakai[$kunci] = true;
+            $siap[] = $pecahan;
+        }
+
+        try {
+            $ditemukan = Santri::query()
+                ->whereIn('NOCUST', array_column($siap, 'nis'))
+                ->get()
+                ->keyBy(fn (Santri $santri): string => trim((string) $santri->NOCUST));
+        } catch (QueryException) {
+            return response()->json(['message' => 'Tidak dapat terhubung ke database. Periksa koneksi, lalu coba lagi.'], 503);
+        }
+
+        $kelompok = [];
+
+        foreach ($siap as $item) {
+            $nis = $item['nis'];
+
+            if (! isset($kelompok[$nis])) {
+                $santri = $ditemukan->get($nis);
+                $kelompok[$nis] = [
+                    'nis' => $nis,
+                    'nama' => $santri instanceof Santri ? $santri->nama() : '',
+                    'ditemukan' => $santri instanceof Santri,
+                    'berkas' => [],
+                ];
+            }
+
+            $kelompok[$nis]['berkas'][] = $item['berkas'];
+        }
+
+        return response()->json([
+            'siswa' => array_values($kelompok),
+            'gagal' => $gagal,
+        ]);
     }
 
     public function suggest(Request $request): JsonResponse
@@ -243,6 +390,24 @@ class RaportAkademikController extends Controller
         }
 
         return $query;
+    }
+
+    /**
+     * @return array{nis: string, berkas: string}|null
+     */
+    private function pecahNamaBerkas(string $asli): ?array
+    {
+        $berkas = $this->files->filename($asli);
+        $berkas = preg_replace('/\.pdf$/i', '.pdf', $berkas) ?? $berkas;
+
+        if (! preg_match('/^(\d{4,15})_([A-Za-z0-9][A-Za-z0-9_-]*)\.pdf$/', $berkas, $cocok)) {
+            return null;
+        }
+
+        return [
+            'nis' => $cocok[1],
+            'berkas' => $berkas,
+        ];
     }
 
     /**

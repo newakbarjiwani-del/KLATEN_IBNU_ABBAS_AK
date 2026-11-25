@@ -58,7 +58,6 @@ class KesantrianDashboardTest extends TestCase
         ]);
 
         $this->post('/login', [
-            'aplikasi' => 'admkes',
             'users' => 'admkes',
             'password' => 'pintu-kesantrian',
         ]);

@@ -21,6 +21,11 @@ class KesantrianMenu
                     'label' => 'Master Pelanggaran',
                     'summary' => 'Referensi nama pelanggaran, skor, dan keterangan. Nomor urut berjalan dari yang terkecil.',
                 ],
+                [
+                    'slug' => 'master-kategori-raport',
+                    'label' => 'Master Kategori Raport',
+                    'summary' => 'Kategori dan butir nilai raport kesantrian untuk setiap unit.',
+                ],
             ],
             'Pelanggaran' => [
                 [

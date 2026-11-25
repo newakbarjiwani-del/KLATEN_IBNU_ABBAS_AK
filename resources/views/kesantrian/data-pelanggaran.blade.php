@@ -17,7 +17,7 @@
             @include('partials.keep-grup')
             <label>
                 Tahun Akademik
-                <select name="thn_aka">
+                <select class="is-searchable" name="thn_aka" data-search-placeholder="Cari tahun akademik...">
                     <option value="">Semua Tahun Akademik</option>
                     @foreach ($years as $year)
                         <option value="{{ $year->thn_aka }}" @selected($selectedYear === $year->thn_aka)>{{ $year->thn_aka }}</option>

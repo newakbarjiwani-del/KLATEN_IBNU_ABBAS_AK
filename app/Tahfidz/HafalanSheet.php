@@ -28,10 +28,11 @@ class HafalanSheet
             return [];
         }
 
-        $fields = $kind === 'murajaah'
-            ? ['nis', 'totjuzz', 'juzz', 'lulus', 'prestasi']
-            : ['nis', 'juzzdihapal', 'juzzposisi', 'juzztotal', 'ziadah', 'lulus', 'prestasi'];
-        $aliases = $this->aliases($kind);
+        $fields = [
+            'nis', 'juzzdihapal', 'juzzposisi', 'juzztotal', 'ziadah', 'murojaah',
+            'tuhfah', 'jazari', 'statusujian', 'prestasi', 'jumlahpertemuan', 'totalkehadiran',
+        ];
+        $aliases = $this->aliases();
         $header = array_map(fn (string $cell): string => $this->normalize($cell), $matrix[0]);
         $start = 0;
         $columns = [];
@@ -75,26 +76,21 @@ class HafalanSheet
     /**
      * @return array<string, array<int, string>>
      */
-    private function aliases(string $kind): array
+    private function aliases(): array
     {
-        $shared = [
+        return [
             'nis' => ['nis', 'nocust'],
-            'lulus' => ['lulus', 'statuslulus'],
-            'prestasi' => ['prestasi', 'statusprestasi'],
-        ];
-
-        if ($kind === 'murajaah') {
-            return $shared + [
-                'totjuzz' => ['totjuzz', 'totaljuzz', 'totaljuz'],
-                'juzz' => ['juzz', 'juz'],
-            ];
-        }
-
-        return $shared + [
-            'juzzdihapal' => ['juzzdihapal', 'juzdihapal', 'juzzdihafal'],
-            'juzzposisi' => ['juzzposisi', 'juzposisi'],
-            'juzztotal' => ['juzztotal', 'juztotal', 'totaljuzz', 'juzzztotal'],
+            'juzzdihapal' => ['juzdihapal', 'juzzdihapal', 'juzzdihafal', 'juzdihafal'],
+            'juzzposisi' => ['juzposisi', 'juzzposisi'],
+            'juzztotal' => ['juztotal', 'juzztotal', 'totaljuz', 'totaljuzz'],
             'ziadah' => ['ziadah', 'ziyadah'],
+            'murojaah' => ['murojaah', 'murajaah'],
+            'tuhfah' => ['tuhfah'],
+            'jazari' => ['jazari'],
+            'statusujian' => ['statusujian', 'lulus', 'statuslulus'],
+            'prestasi' => ['prestasi', 'statusprestasi'],
+            'jumlahpertemuan' => ['jumlahpertemuan', 'pertemuan'],
+            'totalkehadiran' => ['totalkehadiran', 'kehadiran'],
         ];
     }
 

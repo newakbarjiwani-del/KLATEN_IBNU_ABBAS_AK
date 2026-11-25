@@ -46,6 +46,24 @@ class TahfidzDashboardTest extends TestCase
             $table->string('StatusPrestasi', 15)->nullable();
         });
 
+        Schema::create('akademik_upload_tahfidz', function (Blueprint $table) {
+            $table->increments('urut');
+            $table->date('tgl')->nullable();
+            $table->string('periode', 10)->nullable();
+            $table->string('NOCUST', 15)->nullable();
+            $table->string('juzzdihapal', 100)->nullable();
+            $table->string('juzzposisi', 20)->nullable();
+            $table->string('juzztotal', 20)->nullable();
+            $table->string('ziadah', 20)->nullable();
+            $table->string('murojaah', 50)->nullable();
+            $table->string('tuhfah', 50)->nullable();
+            $table->string('jazari', 50)->nullable();
+            $table->string('statusujian', 30)->nullable();
+            $table->string('prestasi', 50)->nullable();
+            $table->string('jumlahpertemuan', 20)->nullable();
+            $table->string('totalkehadiran', 20)->nullable();
+        });
+
         Schema::create('akademik_murajaah', function (Blueprint $table) {
             $table->increments('urut');
             $table->date('tgl')->nullable();
@@ -86,30 +104,28 @@ class TahfidzDashboardTest extends TestCase
             ['NOCUST' => '1301154344', 'NMCUST' => 'Ahmad'],
             ['NOCUST' => '1402000001', 'NMCUST' => 'Budi'],
         ]);
-        DB::table('akademik_setoran')->insert([
+        DB::table('akademik_upload_tahfidz')->insert([
             'tgl' => '2024-10-01',
             'juzzdihapal' => '30',
             'juzzposisi' => '5',
             'juzztotal' => '5',
             'NOCUST' => '1301154344',
             'ziadah' => '0.5',
+            'murojaah' => '1-2',
+            'tuhfah' => 'lancar',
+            'jazari' => 'dasar',
+            'statusujian' => 'lulus',
+            'prestasi' => '5 juz',
+            'jumlahpertemuan' => '8',
+            'totalkehadiran' => '7',
             'periode' => '202410',
-            'StatusLulus' => 'lulus',
-            'StatusPrestasi' => '5 juz',
         ]);
-        DB::table('akademik_setoran')->insert([
-            'tgl' => '2024-10-02',
+        DB::table('akademik_upload_tahfidz')->insert([
+            'tgl' => '2024-11-02',
             'NOCUST' => '1402000001',
             'periode' => '202411',
             'ziadah' => '1',
-        ]);
-        DB::table('akademik_murajaah')->insert([
-            'tgl' => '2024-09-01',
-            'juzz' => '1-2',
-            'totjuzz' => '2',
-            'NOCUST' => '1301154344',
-            'periode' => '202409',
-            'StatusLulus' => 'lulus',
+            'murojaah' => '3',
         ]);
         DB::table('oldakademik_setoran')->insert([
             'tgl' => '2019-01-15',
@@ -124,24 +140,21 @@ class TahfidzDashboardTest extends TestCase
             ->get('/tahfidz')
             ->assertOk()
             ->assertSee('Dashboard Tahfidz')
-            ->assertSee('Data Setoran dan Tahfidz')
-            ->assertSee('Murajaah')
+            ->assertSee('Data Tahfidz')
+            ->assertSee('Upload Tahfidz')
+            ->assertSee('Laporan Capaian')
             ->assertSee('Setoran (OLD)')
             ->assertSee('noindex, nofollow', false);
 
         $this->actingAs($admin)
-            ->get('/tahfidz/data-setoran?periode=202410&mode=setoran')
+            ->get('/tahfidz/data-setoran?periode=202410')
             ->assertOk()
-            ->assertSee('Juzz Di Hapal')
+            ->assertSee('Juz di hapal')
+            ->assertSee('Murojaah')
+            ->assertSee('Tuhfah')
             ->assertSee('Ahmad')
             ->assertSee('0.5')
-            ->assertDontSee('Budi');
-
-        $this->actingAs($admin)
-            ->get('/tahfidz/data-setoran?mode=murajaah&periode=202409')
-            ->assertOk()
-            ->assertSee('1-2')
-            ->assertSee('Ahmad')
+            ->assertSee('lancar')
             ->assertDontSee('Budi');
 
         $this->actingAs($admin)
@@ -161,14 +174,17 @@ class TahfidzDashboardTest extends TestCase
             ->assertRedirect('/tahfidz/data-setoran');
 
         $this->actingAs($admin)
-            ->get('/tahfidz/setoran')
+            ->get('/tahfidz/upload-tahfidz')
             ->assertOk()
-            ->assertSee('Import Setoran Santri');
+            ->assertSee('Upload Tahfidz');
+
+        $this->actingAs($admin)
+            ->get('/tahfidz/setoran')
+            ->assertRedirect('/tahfidz/upload-tahfidz');
 
         $this->actingAs($admin)
             ->get('/tahfidz/murajaah')
-            ->assertOk()
-            ->assertSee('Import Murajaah Santri');
+            ->assertRedirect('/tahfidz/upload-tahfidz');
 
         $this->actingAs($admin)
             ->get('/tahfidz/setoran-lama')
@@ -182,7 +198,7 @@ class TahfidzDashboardTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_murajaah_file_can_be_opened_and_saved(): void
+    public function test_tahfidz_file_can_be_opened_and_saved(): void
     {
         Storage::fake('local');
         $admin = $this->admin('admtah', 'Admin Tahfidz');
@@ -191,36 +207,40 @@ class TahfidzDashboardTest extends TestCase
             'NMCUST' => 'Ahmad',
         ]);
         $file = UploadedFile::fake()->createWithContent(
-            'murajaah.csv',
-            "NIS,Total Juzz,Juzz,Lulus,Prestasi\n1301154344,2,1-2,lulus,baik\n999,1,1,lulus,baik\n",
+            'tahfidz.csv',
+            "NIS,Juz di hapal,Juz posisi,Juz total,Ziadah,Murojaah,Tuhfah,Jazari,Status ujian,Prestasi,Jumlah pertemuan,Total kehadiran\n1301154344,30,5,5,0.5,1-2,lancar,dasar,lulus,baik,8,7\n999,1,1,1,0,1,lancar,dasar,lulus,baik,1,1\n",
         );
 
         $this->actingAs($admin)
-            ->post('/tahfidz/murajaah/buka', [
+            ->post('/tahfidz/upload-tahfidz/buka', [
                 'periode' => '202410',
                 'berkas' => $file,
             ])
-            ->assertRedirect('/tahfidz/murajaah')
+            ->assertRedirect('/tahfidz/upload-tahfidz')
             ->assertSessionHas('status', '2 baris siap diperiksa.');
 
         $this->actingAs($admin)
-            ->get('/tahfidz/murajaah')
+            ->get('/tahfidz/upload-tahfidz')
             ->assertOk()
             ->assertSee('Ahmad')
             ->assertSee('NIS tidak ditemukan');
 
         $this->actingAs($admin)
-            ->post('/tahfidz/murajaah/simpan', ['periode' => '202410'])
-            ->assertRedirect('/tahfidz/murajaah')
+            ->post('/tahfidz/upload-tahfidz/simpan', ['periode' => '202410'])
+            ->assertRedirect('/tahfidz/upload-tahfidz')
             ->assertSessionHas('status', '1 baris disimpan untuk periode 202410.');
 
-        $this->assertDatabaseHas('akademik_murajaah', [
+        $this->assertDatabaseHas('akademik_upload_tahfidz', [
             'NOCUST' => '1301154344',
             'periode' => '202410',
-            'juzz' => '1-2',
-            'totjuzz' => '2',
+            'juzzdihapal' => '30',
+            'murojaah' => '1-2',
+            'tuhfah' => 'lancar',
+            'statusujian' => 'lulus',
+            'jumlahpertemuan' => '8',
+            'totalkehadiran' => '7',
         ]);
-        $this->assertDatabaseMissing('akademik_murajaah', [
+        $this->assertDatabaseMissing('akademik_upload_tahfidz', [
             'NOCUST' => '999',
         ]);
     }
@@ -229,30 +249,74 @@ class TahfidzDashboardTest extends TestCase
     {
         $admin = $this->admin('admtah', 'Admin Tahfidz');
         DB::table('scctcust')->insert(['NOCUST' => '1301154344', 'NMCUST' => 'Ahmad']);
-        DB::table('akademik_setoran')->insert([
+        DB::table('akademik_upload_tahfidz')->insert([
             'tgl' => '2024-10-01',
             'juzzdihapal' => '30',
             'NOCUST' => '1301154344',
             'periode' => '202410',
         ]);
-        DB::table('akademik_setoran')->insert([
+        DB::table('akademik_upload_tahfidz')->insert([
             'tgl' => '2024-11-01',
             'NOCUST' => '1301154344',
             'periode' => '202411',
         ]);
 
-        $template = $this->actingAs($admin)->get('/tahfidz/murajaah/template');
+        $template = $this->actingAs($admin)->get('/tahfidz/upload-tahfidz/template');
         $template->assertOk();
-        $template->assertDownload('template-murajaah.xlsx');
-        $this->assertStringContainsString('Total Juzz', $this->sheetText($template));
+        $template->assertDownload('template-tahfidz.xlsx');
+        $this->assertStringContainsString('Juz di hapal', $this->sheetText($template));
 
-        $export = $this->actingAs($admin)->get('/tahfidz/data-setoran/ekspor?mode=setoran&periode=202410');
+        $export = $this->actingAs($admin)->get('/tahfidz/data-setoran/ekspor?periode=202410');
         $export->assertOk();
-        $export->assertDownload('setoran-bacaan.xlsx');
+        $export->assertDownload('data-tahfidz.xlsx');
         $sheet = $this->sheetText($export);
         $this->assertStringContainsString('Ahmad', $sheet);
         $this->assertStringContainsString('202410', $sheet);
         $this->assertStringNotContainsString('202411', $sheet);
+    }
+
+    public function test_capaian_report_shows_one_or_more_months_and_prints(): void
+    {
+        $admin = $this->admin('admtah', 'Admin Tahfidz');
+        DB::table('scctcust')->insert([
+            ['NOCUST' => '1301154344', 'NMCUST' => 'Ahmad'],
+            ['NOCUST' => '1402000001', 'NMCUST' => 'Budi'],
+        ]);
+        DB::table('akademik_upload_tahfidz')->insert([
+            ['tgl' => '2024-10-01', 'NOCUST' => '1301154344', 'periode' => '202410', 'murojaah' => '1-2', 'tuhfah' => 'lancar'],
+            ['tgl' => '2024-11-01', 'NOCUST' => '1402000001', 'periode' => '202411', 'murojaah' => '3', 'tuhfah' => 'baik'],
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/tahfidz/laporan-capaian')
+            ->assertOk()
+            ->assertSee('Pilih satu bulan atau beberapa bulan sekaligus.');
+
+        $this->actingAs($admin)
+            ->get('/tahfidz/laporan-capaian?bulan[]=202410')
+            ->assertOk()
+            ->assertSee('Oktober 2024')
+            ->assertSee('Ahmad')
+            ->assertSee('1-2')
+            ->assertDontSee('Budi');
+
+        $this->actingAs($admin)
+            ->get('/tahfidz/laporan-capaian?bulan[]=202410&bulan[]=202411')
+            ->assertOk()
+            ->assertSee('Ahmad')
+            ->assertSee('Budi');
+
+        $this->actingAs($admin)
+            ->get('/tahfidz/laporan-capaian/cetak?bulan[]=202410')
+            ->assertOk()
+            ->assertSee('LAPORAN CAPAIAN TAHFIDZ', false)
+            ->assertSee('Cetak / simpan PDF', false)
+            ->assertSee('Ahmad', false)
+            ->assertDontSee('Budi', false);
+
+        $this->actingAs($admin)
+            ->get('/tahfidz/laporan-capaian/cetak')
+            ->assertRedirect('/tahfidz/laporan-capaian');
     }
 
     public function test_other_systems_cannot_open_tahfidz_menus(): void
@@ -273,7 +337,7 @@ class TahfidzDashboardTest extends TestCase
         ]);
 
         foreach (range(1, 31) as $index) {
-            DB::table('akademik_setoran')->insert([
+            DB::table('akademik_upload_tahfidz')->insert([
                 'tgl' => '2024-10-01',
                 'NOCUST' => $index % 2 === 0 ? '1402000001' : '1301154344',
                 'periode' => '202410',

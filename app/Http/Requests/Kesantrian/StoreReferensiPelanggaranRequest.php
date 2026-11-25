@@ -10,7 +10,7 @@ class StoreReferensiPelanggaranRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->kelCode() === 'admkes';
+        return $this->user()?->allows('admkes') ?? false;
     }
 
     protected function prepareForValidation(): void
@@ -20,6 +20,7 @@ class StoreReferensiPelanggaranRequest extends FormRequest
         $this->merge([
             'nama' => trim((string) $this->input('nama')),
             'keterangan' => is_string($note) ? trim($note) : $note,
+            'unit' => ReferensiPelanggaran::canonicalUnit((string) $this->input('unit')),
         ]);
     }
 
@@ -32,6 +33,7 @@ class StoreReferensiPelanggaranRequest extends FormRequest
             'nama' => ['required', 'string', 'max:1000'],
             'skor' => ['required', 'integer', 'between:0,32767'],
             'keterangan' => ['nullable', 'string', 'max:20'],
+            'unit' => ['required', 'in:'.implode(',', ReferensiPelanggaran::UNITS)],
         ];
     }
 
@@ -47,6 +49,8 @@ class StoreReferensiPelanggaranRequest extends FormRequest
             'skor.integer' => 'Skor harus berupa angka.',
             'skor.between' => 'Skor harus antara 0 dan 32767.',
             'keterangan.max' => 'Keterangan paling panjang 20 karakter.',
+            'unit.required' => 'Unit wajib dipilih.',
+            'unit.in' => 'Unit tidak dikenal.',
         ];
     }
 
@@ -61,6 +65,7 @@ class StoreReferensiPelanggaranRequest extends FormRequest
 
             $exists = ReferensiPelanggaran::query()
                 ->where('jenis_pelangaran', $nama)
+                ->where('unit', $this->input('unit'))
                 ->exists();
 
             if ($exists) {

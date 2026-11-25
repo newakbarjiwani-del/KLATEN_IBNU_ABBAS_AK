@@ -14,18 +14,18 @@
                     <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
             </button>
-            <a class="desk-top-title" href="{{ route('tahfidz.home') }}">Tahfidz</a>
+            <a class="desk-top-title" href="{{ route($account->homeRoute()) }}">{{ $account->portalTitle() }}</a>
         </header>
         <div class="desk-scrim" id="desk-scrim" hidden></div>
         <aside class="desk-side">
             <div class="desk-brand-row">
-                <a class="desk-brand" href="{{ route('tahfidz.home') }}" title="Kembali ke Dashboard Tahfidz">
+                <a class="desk-brand" href="{{ route($account->homeRoute()) }}" title="Kembali ke beranda">
                     <div class="brand-avatar-wrap">
                         @include('partials.logo')
                     </div>
                     <div class="brand-info">
                         <span class="brand-title">
-                            <strong>Tahfidz</strong>
+                            <strong>{{ $account->portalTitle() }}</strong>
                             <span class="brand-badge-status" title="Sistem Aktif"><span class="pulse-dot"></span> Online</span>
                         </span>
                         <small class="brand-user">{{ $account->displayName() }}</small>
@@ -33,45 +33,7 @@
                 </a>
             </div>
 
-            <nav class="desk-nav" id="desk-nav" aria-label="Menu Tahfidz">
-                <a
-                    class="desk-link {{ request()->routeIs('tahfidz.home') ? 'is-active' : '' }}"
-                    href="{{ route('tahfidz.home') }}"
-                    @if (request()->routeIs('tahfidz.home')) aria-current="page" @endif
-                >
-                    <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                    </svg>
-                    <span>Dashboard Utama</span>
-                </a>
-
-                @foreach ($groups as $group => $items)
-                    <p class="desk-group">{{ $group }}</p>
-                    @foreach ($items as $item)
-                        @php $slug = $item['slug']; @endphp
-                        <a
-                            class="desk-link {{ ($current['slug'] ?? null) === $slug ? 'is-active' : '' }}"
-                            href="{{ route('tahfidz.menu', $slug) }}"
-                            @if (($current['slug'] ?? null) === $slug) aria-current="page" @endif
-                        >
-                            <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                @if ($slug === 'murajaah')
-                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                                @elseif ($slug === 'setoran-lama')
-                                    <circle cx="12" cy="12" r="10"></circle>
-                                    <polyline points="12 6 12 12 16 14"></polyline>
-                                @else
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                    <polyline points="14 2 14 8 20 8"></polyline>
-                                @endif
-                            </svg>
-                            <span>{{ $item['label'] }}</span>
-                        </a>
-                    @endforeach
-                @endforeach
-            </nav>
+            @include('partials.portal-nav')
 
             <div class="desk-foot">
                 @include('partials.theme-button')

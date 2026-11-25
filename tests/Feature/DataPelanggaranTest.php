@@ -39,6 +39,7 @@ class DataPelanggaranTest extends TestCase
             $table->text('jenis_pelangaran')->nullable();
             $table->smallInteger('skor')->nullable();
             $table->string('keterangan', 20)->nullable();
+            $table->timestamp('deleted_at')->nullable();
         });
 
         Schema::create('scctcust', function (Blueprint $table) {
@@ -75,6 +76,8 @@ class DataPelanggaranTest extends TestCase
             ->assertSee('Farel Raditya')
             ->assertSee('9999999999')
             ->assertSee('VII 2')
+            ->assertSee('class="is-searchable"', false)
+            ->assertSee('Cari tahun akademik')
             ->assertDontSee('belum diisi.');
     }
 

@@ -14,7 +14,7 @@ class AkademikMenu
                 [
                     'slug' => 'upload-raport',
                     'label' => 'Upload Raport',
-                    'summary' => 'Unggah PDF raport akademik. Kelas mengikuti unit, kelas, dan kelompok santri. Jenis ujian dipilih Mid atau Akhir.',
+                    'summary' => 'Unggah beberapa PDF sekaligus. Nama berkas NIS_jenis.pdf, contoh 1301154344_type1.pdf. Satu siswa boleh punya lebih dari satu berkas pada ujian yang sama.',
                 ],
                 [
                     'slug' => 'data-raport',

@@ -288,6 +288,63 @@ label {
     line-height: 1.4;
 }
 
+.raport-pratinjau h3 {
+    margin: 4px 0 0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+
+.raport-pratinjau #pratinjau-isi {
+    display: grid;
+    gap: 8px;
+}
+
+.pratinjau-siswa {
+    display: grid;
+    gap: 4px;
+    padding: 10px 12px;
+    background: var(--paper-deep);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+}
+
+.pratinjau-siswa p {
+    margin: 0;
+}
+
+.pratinjau-siswa strong {
+    font-size: 14px;
+}
+
+.pratinjau-siswa span {
+    margin-left: 8px;
+    color: var(--ink-soft);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.pratinjau-siswa ul {
+    margin: 2px 0 0;
+    padding-left: 18px;
+    color: var(--ink);
+    font-size: 13px;
+}
+
+.pratinjau-satu,
+.pratinjau-tunggu {
+    color: var(--ink-soft);
+    font-size: 12.5px;
+}
+
+.pratinjau-siswa.is-missing strong,
+.pratinjau-gagal {
+    color: var(--danger);
+    font-size: 12.5px;
+}
+
 input,
 select,
 textarea {
@@ -333,6 +390,129 @@ select:focus,
 textarea:focus {
     border-color: var(--brand);
     box-shadow: 0 0 0 3px var(--brand-soft);
+}
+
+.unit-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0 0 14px;
+}
+
+.unit-tabs a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--ink);
+    background: var(--field);
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.unit-tabs a.is-active {
+    color: #fff;
+    background: var(--brand);
+    border-color: var(--brand);
+}
+
+.row-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.row-actions form {
+    display: inline;
+    margin: 0;
+}
+
+.searchable {
+    position: relative;
+}
+
+.searchable-source {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    border: 0 !important;
+}
+
+.searchable-toggle,
+.searchable-query,
+.searchable-option {
+    width: 100%;
+    text-align: left;
+}
+
+.searchable-toggle {
+    height: 44px;
+    padding: 0 36px 0 14px;
+    color: var(--ink);
+    background: var(--field);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-size: 13.5px;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%230875ab' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-position: right 12px center;
+    background-size: 16px 16px;
+    background-repeat: no-repeat;
+}
+
+.searchable-panel {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    padding: 8px;
+    background: var(--panel, var(--field));
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 24px rgba(8, 20, 32, 0.16);
+}
+
+.searchable-query {
+    height: 36px;
+    margin-bottom: 8px;
+}
+
+.searchable-list {
+    display: grid;
+    gap: 2px;
+    max-height: 220px;
+    overflow: auto;
+}
+
+.searchable-option {
+    min-height: 34px;
+    padding: 7px 8px;
+    border: 0;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--ink);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.searchable-option:hover,
+.searchable-option.is-current {
+    background: color-mix(in srgb, var(--brand) 12%, transparent);
+}
+
+.searchable-empty {
+    margin: 0;
+    padding: 8px;
+    color: var(--ink-soft);
+    font-size: 12px;
 }
 
 input[type="checkbox"],
@@ -627,6 +807,33 @@ button[type="submit"]:active,
 
 .desk-group:first-child {
     margin-top: 0;
+}
+
+.desk-system {
+    margin: 18px 0 6px;
+    padding: 8px 10px 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.desk-system + .desk-group {
+    margin-top: 6px;
+}
+
+.portal-block {
+    margin-top: 22px;
+}
+
+.portal-block > h2 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
 .desk-link {
@@ -1102,6 +1309,25 @@ html[data-theme="dark"] .hero-banner-tag {
     background: var(--card);
 }
 
+.bulan-pilih {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+}
+
+.bulan-pilih label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13.5px;
+}
+
+.bulan-pilih input {
+    width: auto;
+    height: auto;
+}
+
 .filter-actions {
     display: flex;
     gap: 8px;
@@ -1238,10 +1464,31 @@ html[data-theme="dark"] .hero-banner-tag {
     transition: all 0.15s ease;
 }
 
-.btn-row-delete:hover {
+.btn-row-delete:hover,
+button.btn-row-delete[type="submit"]:hover {
     background: var(--danger);
     color: #ffffff;
     border-color: var(--danger);
+    box-shadow: none;
+}
+
+button.btn-row-delete[type="submit"] {
+    height: 36px;
+    padding: 0 16px;
+    border: 1px solid var(--danger-border);
+    border-radius: var(--radius);
+    color: var(--danger);
+    background: var(--danger-bg);
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: none;
+}
+
+button.btn-row-delete[type="submit"]:active {
+    background: var(--danger);
+    color: #ffffff;
+    border-color: var(--danger);
+    transform: none;
 }
 
 .btn-danger-confirm {
@@ -1764,10 +2011,31 @@ html[data-theme="dark"] .hero-banner-tag {
 }
 
 .data-table .col-action {
-    width: 112px;
-    min-width: 112px;
+    width: 168px;
+    min-width: 168px;
     text-align: right;
     white-space: nowrap;
+}
+
+a.btn-unduh {
+    height: 28px;
+    padding: 0 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--brand-border);
+    border-radius: var(--radius);
+    color: var(--brand);
+    background: var(--brand-soft);
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+a.btn-unduh:hover {
+    color: #fff;
+    background: var(--brand);
+    border-color: var(--brand);
 }
 
 .data-table th.col-action {
@@ -2688,6 +2956,127 @@ body.nav-open {
 }
 
 /* ==========================================================================
+   MASTER KATEGORI RAPORT
+   ========================================================================== */
+
+form.kategori-edit {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) 120px auto;
+    gap: 12px;
+    align-items: end;
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    padding: 16px 20px;
+}
+
+form.kategori-edit input {
+    height: 36px;
+}
+
+.kategori-toolbar {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    padding-right: 20px;
+    border-bottom: 1px solid var(--line);
+    background: var(--card);
+}
+
+.kategori-toolbar > form.kategori-edit {
+    padding-right: 0;
+}
+
+.kategori-toolbar > form:last-child {
+    display: flex;
+    margin: 0 0 16px;
+}
+
+.kategori-toolbar button[type="submit"],
+.butir-row button[type="submit"],
+.butir-add button[type="submit"] {
+    height: 36px;
+    padding: 0 14px;
+}
+
+.butir-row button[type="submit"],
+form.butir-add button[type="submit"] {
+    width: 100%;
+}
+
+.butir-sheet {
+    background: var(--card);
+}
+
+.butir-head,
+.butir-row,
+form.butir-add {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr) 92px 92px;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 20px;
+}
+
+.butir-head {
+    padding-top: 14px;
+    padding-bottom: 8px;
+    color: var(--ink-soft);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.butir-head span:last-child {
+    grid-column: 3 / span 2;
+}
+
+.butir-row {
+    border-top: 1px solid var(--line);
+}
+
+.butir-row:nth-child(even) {
+    background: color-mix(in srgb, var(--paper-deep) 70%, transparent);
+}
+
+form.kategori-edit input[type="hidden"],
+form.butir-add input[type="hidden"],
+.butir-row input[type="hidden"] {
+    display: none;
+}
+
+.butir-row > form.butir-edit,
+.butir-row > form:last-child {
+    display: contents;
+}
+
+.butir-row input,
+form.butir-add input {
+    height: 36px;
+}
+
+.butir-empty {
+    margin: 0;
+    padding: 16px 20px;
+    color: var(--ink-soft);
+    font-size: 13px;
+    border-top: 1px solid var(--line);
+}
+
+form.butir-add {
+    margin: 0;
+    padding-top: 12px;
+    padding-bottom: 14px;
+    background: color-mix(in srgb, var(--brand) 8%, var(--card));
+    border-top: 1px solid var(--line);
+}
+
+form.butir-add button {
+    grid-column: 3 / span 2;
+}
+
+/* ==========================================================================
    RESPONSIVE QUERIES
    ========================================================================== */
 
@@ -2916,6 +3305,28 @@ body.nav-open {
     .sheet-actions button,
     .sheet-actions a {
         width: 100%;
+    }
+
+    .kategori-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        padding-right: 0;
+    }
+
+    form.kategori-edit,
+    .butir-head,
+    .butir-row,
+    form.butir-add {
+        grid-template-columns: 1fr;
+    }
+
+    .kategori-toolbar > form:last-child {
+        margin: 0 20px 16px;
+    }
+
+    .butir-head span:last-child,
+    form.butir-add button {
+        grid-column: auto;
     }
 
     .modal-actions {

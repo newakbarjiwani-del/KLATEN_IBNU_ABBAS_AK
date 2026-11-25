@@ -8,7 +8,7 @@
             @include('partials.logo', ['class' => 'is-hero'])
             <p class="eyebrow">PPTQ Ibnu Abbas</p>
             <h1>Klaten</h1>
-            <p>Pilih aplikasi lebih dulu, lalu masuk dengan username dan password akun yang sesuai.</p>
+            <p>Masuk dengan username unit. Menu yang tampil mengikuti hak akses akun.</p>
             <ul class="systems">
                 <li><span>01</span> Tahfidz</li>
                 <li><span>02</span> Kesantrian</li>
@@ -18,19 +18,10 @@
 
         <div class="panel">
             <h2>Masuk</h2>
-            <p class="intro">Pilih aplikasi di atas username, lalu masuk dengan akun sistem tersebut.</p>
+            <p class="intro">Gunakan username unit. Aplikasi di dalam mengikuti hak akses akun tersebut.</p>
 
             <form method="POST" action="{{ route('login.store') }}">
                 @csrf
-                <label>
-                    Aplikasi
-                    <select name="aplikasi" required autofocus>
-                        <option value="" @selected(old('aplikasi') === null || old('aplikasi') === '')>Pilih aplikasi sistem</option>
-                        @foreach (\App\Models\CyberKey::SYSTEMS as $code => $system)
-                            <option value="{{ $code }}" @selected(old('aplikasi') === $code)>{{ $system['name'] }}</option>
-                        @endforeach
-                    </select>
-                </label>
                 <label>
                     Username
                     <input
@@ -41,6 +32,7 @@
                         placeholder="Ketik username akun..."
                         autocomplete="username"
                         required
+                        autofocus
                     >
                 </label>
                 <label>
@@ -62,7 +54,7 @@
                     Masuk ke Sistem
                 </button>
             </form>
-            <p class="note">Aplikasi harus sesuai dengan kelompok akun.</p>
+            <p class="note">Satu akun dipakai bersama. Menu yang terbuka sesuai hak akses unit.</p>
         </div>
     </section>
 @endsection

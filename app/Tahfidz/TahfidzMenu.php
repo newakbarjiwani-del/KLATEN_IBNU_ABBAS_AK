@@ -13,23 +13,23 @@ class TahfidzMenu
             'Tahfidz' => [
                 [
                     'slug' => 'data-setoran',
-                    'label' => 'Data Setoran dan Tahfidz',
-                    'summary' => 'Daftar setoran bacaan dan murajaah. Saring menurut tanggal, mode, dan periode.',
+                    'label' => 'Data Tahfidz',
+                    'summary' => 'Daftar unggahan tahfidz. Saring menurut tanggal, bulan, NIS, atau nama.',
                 ],
                 [
-                    'slug' => 'murajaah',
-                    'label' => 'Murajaah',
-                    'summary' => 'Buka berkas murajaah, periksa isinya, lalu simpan ke periode yang dipilih.',
-                ],
-                [
-                    'slug' => 'setoran',
-                    'label' => 'Setoran',
-                    'summary' => 'Buka berkas setoran, periksa isinya, lalu simpan ke periode yang dipilih.',
+                    'slug' => 'upload-tahfidz',
+                    'label' => 'Upload Tahfidz',
+                    'summary' => 'Unggah murojaah dan setoran dalam satu berkas, lalu simpan ke bulan yang dipilih.',
                 ],
                 [
                     'slug' => 'setoran-lama',
                     'label' => 'Setoran (OLD)',
                     'summary' => 'Arsip setoran lama, termasuk surat, ayat, dan tahun akademik.',
+                ],
+                [
+                    'slug' => 'laporan-capaian',
+                    'label' => 'Laporan Capaian',
+                    'summary' => 'Lihat capaian satu bulan atau beberapa bulan sekaligus, lalu cetak PDF.',
                 ],
             ],
         ];

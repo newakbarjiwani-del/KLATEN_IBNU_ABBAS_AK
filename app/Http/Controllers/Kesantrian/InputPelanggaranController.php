@@ -23,7 +23,14 @@ class InputPelanggaranController extends Controller
     {
         try {
             $years = TahunAkademik::query()->orderByDesc('urut')->get();
-            $references = ReferensiPelanggaran::query()->orderBy('urut')->get();
+            $unit = trim((string) auth()->user()?->unit);
+            $references = ReferensiPelanggaran::query()->orderBy('urut');
+
+            if (in_array($unit, ReferensiPelanggaran::UNITS, true)) {
+                $references->where('unit', $unit);
+            }
+
+            $references = $references->get();
 
             $selectedNis = trim((string) $request->query('nis', ''));
             $selectedSantri = null;

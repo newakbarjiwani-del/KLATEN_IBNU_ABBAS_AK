@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\Akademik;
 
-use App\Models\Santri;
 use App\Models\TahunAkademik;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -11,13 +10,12 @@ class StoreRaportAkademikRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->kelCode() === 'admaka';
+        return $this->user()?->allows('admaka') ?? false;
     }
 
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'nocust' => Santri::nisDariTeks(trim((string) $this->input('nocust'))) ?? trim((string) $this->input('nocust')),
             'thn_aka' => trim((string) $this->input('thn_aka')),
             'ujian' => strtoupper(trim((string) $this->input('ujian'))),
         ]);
@@ -30,11 +28,10 @@ class StoreRaportAkademikRequest extends FormRequest
     {
         return [
             'thn_aka' => ['required', 'string', 'max:20'],
-            'nocust' => ['required', 'string', 'max:70'],
-            'kelas' => ['required', 'string'],
             'ujian' => ['required', 'in:MID,AKHIR'],
             'tgl_upload' => ['nullable', 'date'],
-            'berkas' => ['required', 'file', 'extensions:pdf', 'max:10240'],
+            'berkas' => ['required', 'array', 'min:1', 'max:20'],
+            'berkas.*' => ['file', 'extensions:pdf', 'max:10240'],
         ];
     }
 
@@ -46,14 +43,13 @@ class StoreRaportAkademikRequest extends FormRequest
         return [
             'thn_aka.required' => 'Tahun akademik wajib dipilih.',
             'thn_aka.max' => 'Tahun akademik terlalu panjang.',
-            'nocust.required' => 'NIS atau nama wajib diisi.',
-            'nocust.max' => 'NIS atau nama terlalu panjang.',
-            'kelas.required' => 'Kelas wajib dipilih.',
             'ujian.required' => 'Jenis ujian wajib dipilih.',
             'ujian.in' => 'Jenis ujian harus Mid atau Akhir.',
             'berkas.required' => 'Berkas PDF wajib dipilih.',
-            'berkas.extensions' => 'Berkas harus berupa PDF.',
-            'berkas.max' => 'Berkas PDF paling besar 10 MB.',
+            'berkas.array' => 'Berkas PDF wajib dipilih.',
+            'berkas.max' => 'Paling banyak 20 berkas sekaligus.',
+            'berkas.*.extensions' => 'Setiap berkas harus berupa PDF.',
+            'berkas.*.max' => 'Setiap berkas PDF paling besar 10 MB.',
         ];
     }
 
@@ -61,38 +57,9 @@ class StoreRaportAkademikRequest extends FormRequest
     {
         $validator->after(function (Validator $validator): void {
             $tahun = $this->input('thn_aka');
-            $nis = $this->input('nocust');
 
             if (is_string($tahun) && $tahun !== '' && ! TahunAkademik::query()->where('thn_aka', $tahun)->exists()) {
                 $validator->errors()->add('thn_aka', 'Tahun akademik tidak ada di master.');
-            }
-
-            if (! is_string($nis) || $nis === '') {
-                return;
-            }
-
-            $santri = Santri::query()->where('NOCUST', $nis)->first();
-
-            if ($santri === null) {
-                $validator->errors()->add('nocust', 'Siswa tidak ditemukan. Ketik NIS atau nama, lalu pilih dari daftar.');
-
-                return;
-            }
-
-            $picked = Santri::pecahKunciKelas((string) $this->input('kelas', ''));
-
-            if ($picked === null) {
-                $validator->errors()->add('kelas', 'Kelas tidak dikenal.');
-
-                return;
-            }
-
-            $matchesStudent = trim((string) $santri->CODE02) === $picked['unit']
-                && trim((string) $santri->DESC02) === $picked['kelas']
-                && trim((string) $santri->DESC03) === $picked['kelompok'];
-
-            if (! $matchesStudent) {
-                $validator->errors()->add('kelas', 'Kelas tidak sesuai dengan NIS.');
             }
         });
     }

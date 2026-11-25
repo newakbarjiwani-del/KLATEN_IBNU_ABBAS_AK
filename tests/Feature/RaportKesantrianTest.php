@@ -3,10 +3,13 @@
 namespace Tests\Feature;
 
 use App\Models\CyberKey;
+use App\Models\ItemRaportKesantrian;
+use App\Models\KategoriRaportKesantrian;
+use App\Models\NilaiRaportKesantrian;
 use App\Models\RaportKesantrian;
 use App\Models\Santri;
 use App\Models\TahunAkademik;
-use App\Services\RaportKesantrianSpreadsheetService;
+use App\Services\SpreadsheetFile;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
@@ -26,6 +29,7 @@ class RaportKesantrianTest extends TestCase
             $table->string('kel', 20)->nullable();
             $table->integer('urut')->nullable();
             $table->string('password')->nullable();
+            $table->string('unit', 50)->nullable();
         });
 
         Schema::create('mst_thn_aka', function (Blueprint $table) {
@@ -37,6 +41,7 @@ class RaportKesantrianTest extends TestCase
             $table->increments('CUSTID');
             $table->string('NOCUST', 15)->nullable();
             $table->string('NMCUST', 70)->nullable();
+            $table->string('CODE02', 50)->nullable();
             $table->string('DESC02', 50)->nullable();
             $table->string('DESC03', 50)->nullable();
         });
@@ -70,14 +75,39 @@ class RaportKesantrianTest extends TestCase
             $table->string('Leadership', 5)->nullable();
             $table->string('Sosial', 5)->nullable();
         });
+
+        Schema::create('akademik_ref_raport_kategori', function (Blueprint $table) {
+            $table->id();
+            $table->string('unit', 20);
+            $table->string('nama', 80);
+            $table->unsignedSmallInteger('urut')->default(1);
+            $table->timestamp('deleted_at')->nullable();
+        });
+
+        Schema::create('akademik_ref_raport_item', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('kategori_id');
+            $table->string('nama', 80);
+            $table->unsignedSmallInteger('urut')->default(1);
+            $table->timestamp('deleted_at')->nullable();
+        });
+
+        Schema::create('akademik_raport_kesantrian_nilai', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedInteger('raport_urut');
+            $table->unsignedBigInteger('item_id');
+            $table->string('nilai', 255)->nullable();
+            $table->unique(['raport_urut', 'item_id']);
+        });
     }
 
-    protected function signInAsKesantrian(): CyberKey
+    protected function signInAsKesantrian(?string $unit = null, string $username = 'admkesantrian'): CyberKey
     {
         $user = CyberKey::create([
-            'users' => 'admkesantrian',
+            'users' => $username,
             'kel' => 'admkes',
             'ket' => 'Admin Kesantrian',
+            'unit' => $unit,
         ]);
 
         $this->actingAs($user);
@@ -85,179 +115,299 @@ class RaportKesantrianTest extends TestCase
         return $user;
     }
 
-    public function test_can_view_input_raport_page(): void
+    protected function buatButir(string $unit, string $kategori, string $butir): ItemRaportKesantrian
+    {
+        $kelompok = KategoriRaportKesantrian::query()->create([
+            'unit' => $unit,
+            'nama' => $kategori,
+            'urut' => 1,
+        ]);
+
+        return $kelompok->items()->create([
+            'nama' => $butir,
+            'urut' => 1,
+        ]);
+    }
+
+    public function test_input_page_asks_for_categories_first(): void
     {
         $this->signInAsKesantrian();
-
-        TahunAkademik::create(['thn_aka' => '2024/2025 - GANJIL']);
 
         $response = $this->get(route('kesantrian.menu', 'input-raport-kesantrian'));
 
         $response->assertOk();
-        $response->assertSee('Import Raport Kesantrian');
-        $response->assertSee('2024/2025 - GANJIL');
-        $response->assertSee('Menghormati');
-        $response->assertSee('Kebersihan Diri');
-        $response->assertSee('Literasi Buku');
-        $response->assertSee('Wali Hujroh');
-        $response->assertDontSee('Adab 1');
-        $response->assertDontSee('Pribadi 1');
+        $response->assertSee('belum dibuat');
+        $response->assertSee('Master Kategori Raport');
+        $response->assertDontSee('OPEN (Preview)');
     }
 
-    public function test_can_download_templates(): void
+    public function test_template_follows_the_unit_items(): void
     {
         $this->signInAsKesantrian();
+        $this->buatButir('KUTTAB', 'Ibadah', 'Sholat Wajib');
 
-        // CSV template
-        $responseCsv = $this->get(route('kesantrian.input-raport-kesantrian.template', ['format' => 'csv']));
-        $responseCsv->assertOk();
-        $responseCsv->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
-        $this->assertStringContainsString('Sholat Wajib', $responseCsv->getContent());
-        $this->assertStringContainsString('Menghormati', $responseCsv->getContent());
-        $this->assertStringContainsString('Wali Hujroh', $responseCsv->getContent());
+        $response = $this->get(route('kesantrian.input-raport-kesantrian.template', ['format' => 'csv']));
 
-        // XLSX template
-        $responseXlsx = $this->get(route('kesantrian.input-raport-kesantrian.template', ['format' => 'xlsx']));
-        $responseXlsx->assertOk();
-        $this->assertStringContainsString('application/', $responseXlsx->headers->get('Content-Type') ?? '');
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
+        $this->assertStringContainsString('Sholat Wajib', $response->getContent());
+        $this->assertStringContainsString('Catatan', $response->getContent());
+        $this->assertStringNotContainsString('Wali Hujroh', $response->getContent());
     }
 
-    public function test_can_preview_csv_and_store_raport(): void
+    public function test_store_writes_a_score_for_each_item(): void
     {
         $this->signInAsKesantrian();
-
         TahunAkademik::create(['thn_aka' => '2024/2025 - GANJIL']);
-        Santri::create(['NOCUST' => '999999999', 'NMCUST' => 'Burhan Testing']);
+        $item = $this->buatButir('KUTTAB', 'Ibadah', 'Sholat Wajib');
+        Santri::create(['NOCUST' => '999999999', 'NMCUST' => 'Burhan Testing', 'CODE02' => 'KUTTAB']);
 
-        $csvContent = "NIS,Ibadah1,Ibadah2,Ibadah3,Ibadah4,Ibadah5,Adab1,Adab2,Adab3,Adab4,Adab5,Pribadi1,Pribadi2,Pribadi3,Pribadi4,Pribadi5,Diri1,Diri2,Diri3,Catatan\n".
-                      "999999999,A,B,C,D,E,A,B,C,D,E,A,B,C,D,E,Organisasi Pramuka,Baca Buku,Karya Tulis,Catatan Wali Mantap\n";
+        $file = UploadedFile::fake()->createWithContent(
+            'import_test.csv',
+            "NIS,Sholat Wajib,Catatan\n999999999,A,Catatan Wali Mantap\n",
+        );
 
-        $file = UploadedFile::fake()->createWithContent('import_test.csv', $csvContent);
-
-        $previewResponse = $this->post(route('kesantrian.input-raport-kesantrian.preview'), [
+        $preview = $this->post(route('kesantrian.input-raport-kesantrian.preview'), [
             'file' => $file,
             'periode' => '2024/2025 - GANJIL',
             'tgl' => '2024-10-29',
+            'unit' => 'KUTTAB',
         ]);
 
-        $previewResponse->assertRedirect();
-        $previewResponse->assertSessionHas('preview_rows');
-
+        $preview->assertRedirect();
+        $preview->assertSessionHas('preview_rows');
         $rows = session('preview_rows');
-        $this->assertCount(1, $rows);
-        $this->assertSame('999999999', $rows[0]['nis']);
-        $this->assertSame('Burhan Testing', $rows[0]['nama']);
-        $this->assertTrue($rows[0]['santri_ditemukan']);
+        $this->assertSame('A', $rows[0]['nilai'][$item->id]);
+        $this->assertTrue($rows[0]['unit_sesuai']);
 
-        // Now commit via store
-        $storeResponse = $this->post(route('kesantrian.input-raport-kesantrian.store'), [
+        $store = $this->post(route('kesantrian.input-raport-kesantrian.store'), [
             'periode' => '2024/2025 - GANJIL',
             'tgl' => '2024-10-29',
+            'unit' => 'KUTTAB',
             'rows_json' => json_encode($rows),
         ]);
 
-        $storeResponse->assertRedirect(route('kesantrian.menu', [
+        $store->assertRedirect(route('kesantrian.menu', [
             'menu' => 'data-raport-kesantrian',
             'periode' => '2024/2025 - GANJIL',
+            'unit' => 'KUTTAB',
         ]));
 
         $this->assertDatabaseHas('akademik_raport_kesantrian', [
             'NOCUST' => '999999999',
-            'periode' => '2024/2025 - GANJIL',
-            'IbadahA' => 'A',
-            'IbadahB' => 'B',
-            'PengembanganA' => 'Organisasi Pramuka',
             'Catatan' => 'Catatan Wali Mantap',
+            'IbadahA' => null,
+        ]);
+        $this->assertDatabaseHas('akademik_raport_kesantrian_nilai', [
+            'item_id' => $item->id,
+            'nilai' => 'A',
         ]);
     }
 
-    public function test_can_view_filter_and_delete_data_raport(): void
+    public function test_data_page_shows_unit_items_and_can_delete(): void
     {
         $this->signInAsKesantrian();
-
         TahunAkademik::create(['thn_aka' => '2024/2025 - GANJIL']);
-        Santri::create(['NOCUST' => '202001', 'NMCUST' => 'Ahmad Farel']);
+        $item = $this->buatButir('KUTTAB', 'Adab', 'Berkata Sopan');
+        Santri::create(['NOCUST' => '202001', 'NMCUST' => 'Ahmad Farel', 'CODE02' => 'KUTTAB']);
 
         $raport = RaportKesantrian::create([
             'NOCUST' => '202001',
             'tgl' => '2024-10-29',
             'periode' => '2024/2025 - GANJIL',
             'Catatan' => 'Santri Rajin',
-            'IbadahA' => 'A',
-            'IbadahB' => 'A',
+        ]);
+        NilaiRaportKesantrian::query()->create([
+            'raport_urut' => $raport->urut,
+            'item_id' => $item->id,
+            'nilai' => 'A',
         ]);
 
         $response = $this->get(route('kesantrian.menu', 'data-raport-kesantrian'));
         $response->assertOk();
         $response->assertSee('Ahmad Farel');
         $response->assertSee('Santri Rajin');
-        $response->assertSee('Tahun akademik');
-        $response->assertSee('Kelompok');
         $response->assertSee('Berkata Sopan');
-        $response->assertSee('Aktif Organisasi');
-        $response->assertSee('Ekspor Excel');
-        $response->assertDontSee('Diri 1');
+        $response->assertSee('Catatan');
+        $response->assertDontSee('Wali Hujroh');
 
-        $this->get(route('kesantrian.data-raport-kesantrian.export'))
+        $this->get(route('kesantrian.data-raport-kesantrian.export', ['unit' => 'KUTTAB']))
             ->assertOk()
             ->assertDownload('raport-kesantrian.xlsx');
 
-        // Delete single
-        $delResponse = $this->delete(route('kesantrian.data-raport-kesantrian.destroy', $raport->urut));
-        $delResponse->assertRedirect();
+        $this->delete(route('kesantrian.data-raport-kesantrian.destroy', $raport->urut), ['unit' => 'KUTTAB'])
+            ->assertRedirect();
         $this->assertDatabaseMissing('akademik_raport_kesantrian', ['urut' => $raport->urut]);
     }
 
-    public function test_can_preview_xlsx_file_and_bulk_delete(): void
+    public function test_xlsx_import_and_bulk_delete(): void
     {
         $this->signInAsKesantrian();
-
         TahunAkademik::create(['thn_aka' => '2024/2025 - GANJIL']);
-        Santri::create(['NOCUST' => '999999999', 'NMCUST' => 'Burhan Santri']);
+        $item = $this->buatButir('KUTTAB', 'Ibadah', 'Sholat Wajib');
+        Santri::create(['NOCUST' => '999999999', 'NMCUST' => 'Burhan Santri', 'CODE02' => 'KUTTAB']);
 
-        $service = app(RaportKesantrianSpreadsheetService::class);
         $tmpPath = tempnam(sys_get_temp_dir(), 'test_xlsx_').'.xlsx';
-        $service->generateXlsxTemplate($tmpPath);
+        app(SpreadsheetFile::class)->write($tmpPath, [
+            ['NIS', 'Sholat Wajib', 'Catatan'],
+            ['999999999', 'A', 'Coba burhan 12mei26'],
+        ], 'Raport');
 
         $uploadedFile = new UploadedFile($tmpPath, 'test_template.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
 
-        $previewResponse = $this->post(route('kesantrian.input-raport-kesantrian.preview'), [
+        $preview = $this->post(route('kesantrian.input-raport-kesantrian.preview'), [
             'file' => $uploadedFile,
             'periode' => '2024/2025 - GANJIL',
             'tgl' => '2024-10-29',
+            'unit' => 'KUTTAB',
         ]);
 
-        $previewResponse->assertRedirect();
-        $previewResponse->assertSessionHas('preview_rows');
+        $preview->assertRedirect();
         $rows = session('preview_rows');
         $this->assertCount(1, $rows);
-        $this->assertSame('999999999', $rows[0]['nis']);
-        $this->assertSame('Burhan Santri', $rows[0]['nama']);
-        $this->assertSame('A', $rows[0]['ibadah1']);
-        $this->assertSame('B', $rows[0]['adab2']);
-        $this->assertSame('E', $rows[0]['pribadi5']);
-        $this->assertSame('B', $rows[0]['diri3']);
+        $this->assertSame('A', $rows[0]['nilai'][$item->id]);
         $this->assertSame('Coba burhan 12mei26', $rows[0]['catatan']);
 
-        // Store
+        $this->post(route('kesantrian.input-raport-kesantrian.store'), [
+            'periode' => '2024/2025 - GANJIL',
+            'tgl' => '2024-10-29',
+            'unit' => 'KUTTAB',
+            'rows_json' => json_encode($rows),
+        ]);
+
+        $created = RaportKesantrian::query()->where('NOCUST', '999999999')->first();
+        $this->assertNotNull($created);
+
+        $this->delete(route('kesantrian.data-raport-kesantrian.bulk'), [
+            'ids' => [$created->urut],
+            'unit' => 'KUTTAB',
+        ])->assertRedirect();
+        $this->assertDatabaseMissing('akademik_raport_kesantrian', ['urut' => $created->urut]);
+
+        if (file_exists($tmpPath)) {
+            @unlink($tmpPath);
+        }
+    }
+
+    public function test_another_unit_does_not_see_or_save_these_categories(): void
+    {
+        $this->buatButir('KUTTAB', 'Ibadah', 'Sholat Kuttab');
+        $smp = $this->buatButir('SMP', 'Adab', 'Sopan SMP');
+        $this->signInAsKesantrian('SMP', 'admsmpkes');
+        TahunAkademik::create(['thn_aka' => '2024/2025 - GANJIL']);
+        Santri::create(['NOCUST' => '1001', 'NMCUST' => 'Santri SMP', 'CODE02' => 'SMP']);
+        Santri::create(['NOCUST' => '1002', 'NMCUST' => 'Santri SMA', 'CODE02' => 'SMA']);
+
+        $page = $this->get(route('kesantrian.menu', 'input-raport-kesantrian'));
+        $page->assertOk();
+        $page->assertSee('Sopan SMP');
+        $page->assertDontSee('Sholat Kuttab');
+
+        $kuttab = KategoriRaportKesantrian::query()->where('unit', 'KUTTAB')->first();
+        $this->put(route('kesantrian.master-kategori-raport.kategori.update', $kuttab->id), [
+            'nama' => 'Diubah',
+            'urut' => 1,
+        ])->assertNotFound();
+
+        $file = UploadedFile::fake()->createWithContent(
+            'campuran.csv',
+            "NIS,Sopan SMP,Catatan\n1001,A,Catatan SMP\n1002,B,Catatan SMA\n",
+        );
+        $preview = $this->post(route('kesantrian.input-raport-kesantrian.preview'), [
+            'file' => $file,
+            'periode' => '2024/2025 - GANJIL',
+            'tgl' => '2024-10-29',
+        ]);
+        $rows = session('preview_rows');
+        $this->assertTrue($rows[0]['unit_sesuai']);
+        $this->assertFalse($rows[1]['unit_sesuai']);
+
         $this->post(route('kesantrian.input-raport-kesantrian.store'), [
             'periode' => '2024/2025 - GANJIL',
             'tgl' => '2024-10-29',
             'rows_json' => json_encode($rows),
         ]);
 
-        $created = RaportKesantrian::where('NOCUST', '999999999')->first();
-        $this->assertNotNull($created);
-
-        // Bulk delete
-        $bulkResponse = $this->delete(route('kesantrian.data-raport-kesantrian.bulk'), [
-            'ids' => [$created->urut],
+        $this->assertDatabaseHas('akademik_raport_kesantrian_nilai', [
+            'item_id' => $smp->id,
+            'nilai' => 'A',
         ]);
-        $bulkResponse->assertRedirect();
-        $this->assertDatabaseMissing('akademik_raport_kesantrian', ['urut' => $created->urut]);
+        $this->assertDatabaseMissing('akademik_raport_kesantrian', ['NOCUST' => '1002']);
+    }
 
-        if (file_exists($tmpPath)) {
-            @unlink($tmpPath);
-        }
+    public function test_master_can_add_a_category_and_item_for_a_unit(): void
+    {
+        $this->signInAsKesantrian();
+
+        $this->post(route('kesantrian.master-kategori-raport.kategori.store'), [
+            'unit' => 'SMA',
+            'nama' => 'Ibadah',
+            'urut' => 1,
+        ])->assertRedirect(route('kesantrian.menu', ['menu' => 'master-kategori-raport', 'unit' => 'SMA']));
+
+        $kategori = KategoriRaportKesantrian::query()->where('unit', 'SMA')->first();
+        $this->assertNotNull($kategori);
+
+        $this->post(route('kesantrian.master-kategori-raport.item.store'), [
+            'kategori_id' => $kategori->id,
+            'nama' => 'Sholat Wajib',
+            'urut' => 1,
+        ])->assertRedirect();
+
+        $this->get(route('kesantrian.menu', ['menu' => 'master-kategori-raport', 'unit' => 'SMA']))
+            ->assertOk()
+            ->assertSee('Sholat Wajib');
+
+        $this->get(route('kesantrian.menu', ['menu' => 'master-kategori-raport', 'unit' => 'KMI']))
+            ->assertOk()
+            ->assertDontSee('Sholat Wajib');
+    }
+
+    public function test_a_student_report_downloads_with_the_akhlak_layout(): void
+    {
+        $this->signInAsKesantrian();
+        $item = $this->buatButir('KUTTAB', 'Ibadah', 'Sholat Dhuha');
+        Santri::create([
+            'NOCUST' => '2266',
+            'NMCUST' => 'Abida Taqiya',
+            'CODE02' => 'KUTTAB',
+            'DESC02' => 'X B1',
+            'DESC03' => 'Alexandria 12',
+        ]);
+        $raport = RaportKesantrian::create([
+            'NOCUST' => '2266',
+            'tgl' => '2026-06-20',
+            'periode' => '2025/2026 - GENAP',
+            'Catatan' => 'Pertahankan semangat belajar.',
+        ]);
+        NilaiRaportKesantrian::query()->create([
+            'raport_urut' => $raport->urut,
+            'item_id' => $item->id,
+            'nilai' => 'A',
+        ]);
+
+        $this->get(route('kesantrian.menu', ['menu' => 'data-raport-kesantrian', 'unit' => 'KUTTAB']))
+            ->assertOk()
+            ->assertSee('Unduh');
+
+        $unduh = $this->get(route('kesantrian.data-raport-kesantrian.unduh', ['urut' => $raport->urut, 'unit' => 'KUTTAB']));
+        $unduh->assertOk();
+        $unduh->assertDownload('laporan-akhlak-2266.html');
+        $unduh->assertSee('LAPORAN AKHLAK SANTRIWATI', false);
+        $unduh->assertSee('Abida Taqiya', false);
+        $unduh->assertSee('X B1', false);
+        $unduh->assertSee('Alexandria 12', false);
+        $unduh->assertSee('2025-2026/Genap', false);
+        $unduh->assertSee('A. IBADAH', false);
+        $unduh->assertSee('Sholat Dhuha', false);
+        $unduh->assertSee('>A<', false);
+        $unduh->assertSee('Catatan Wali Kamar', false);
+        $unduh->assertSee('Pertahankan semangat belajar.', false);
+        $unduh->assertSee('Klaten, 20 Juni 2026', false);
+        $unduh->assertSee('Kepala Kesantrian Putri', false);
+
+        $this->signInAsKesantrian('SMP', 'admsmpkes');
+        $this->get(route('kesantrian.data-raport-kesantrian.unduh', $raport->urut))
+            ->assertNotFound();
     }
 }

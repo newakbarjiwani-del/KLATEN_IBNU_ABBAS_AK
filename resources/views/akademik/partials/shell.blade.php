@@ -14,18 +14,18 @@
                     <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
             </button>
-            <a class="desk-top-title" href="{{ route('akademik.home') }}">Akademik</a>
+            <a class="desk-top-title" href="{{ route($account->homeRoute()) }}">{{ $account->portalTitle() }}</a>
         </header>
         <div class="desk-scrim" id="desk-scrim" hidden></div>
         <aside class="desk-side">
             <div class="desk-brand-row">
-                <a class="desk-brand" href="{{ route('akademik.home') }}" title="Kembali ke Dashboard Raport Akademik">
+                <a class="desk-brand" href="{{ route($account->homeRoute()) }}" title="Kembali ke beranda">
                     <div class="brand-avatar-wrap">
                         @include('partials.logo')
                     </div>
                     <div class="brand-info">
                         <span class="brand-title">
-                            <strong>Akademik</strong>
+                            <strong>{{ $account->portalTitle() }}</strong>
                             <span class="brand-badge-status" title="Sistem Aktif"><span class="pulse-dot"></span> Online</span>
                         </span>
                         <small class="brand-user">{{ $account->displayName() }}</small>
@@ -33,43 +33,7 @@
                 </a>
             </div>
 
-            <nav class="desk-nav" id="desk-nav" aria-label="Menu Raport Akademik">
-                <a
-                    class="desk-link {{ request()->routeIs('akademik.home') ? 'is-active' : '' }}"
-                    href="{{ route('akademik.home') }}"
-                    @if (request()->routeIs('akademik.home')) aria-current="page" @endif
-                >
-                    <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                    </svg>
-                    <span>Dashboard Utama</span>
-                </a>
-
-                @foreach ($groups as $group => $items)
-                    <p class="desk-group">{{ $group }}</p>
-                    @foreach ($items as $item)
-                        @php $slug = $item['slug']; @endphp
-                        <a
-                            class="desk-link {{ ($current['slug'] ?? null) === $slug ? 'is-active' : '' }}"
-                            href="{{ route('akademik.menu', $slug) }}"
-                            @if (($current['slug'] ?? null) === $slug) aria-current="page" @endif
-                        >
-                            <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                @if ($slug === 'upload-raport')
-                                    <polyline points="16 16 12 12 8 16"></polyline>
-                                    <line x1="12" y1="12" x2="12" y2="21"></line>
-                                    <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path>
-                                @else
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                    <polyline points="14 2 14 8 20 8"></polyline>
-                                @endif
-                            </svg>
-                            <span>{{ $item['label'] }}</span>
-                        </a>
-                    @endforeach
-                @endforeach
-            </nav>
+            @include('partials.portal-nav')
 
             <div class="desk-foot">
                 @include('partials.theme-button')

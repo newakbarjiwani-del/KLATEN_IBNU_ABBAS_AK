@@ -78,6 +78,141 @@ class SpreadsheetFile
         return $zip->close();
     }
 
+    /**
+     * @return array<int, array<int, string>>
+     */
+    public function read(string $path, string $extension = ''): array
+    {
+        $extension = strtolower($extension !== '' ? $extension : pathinfo($path, PATHINFO_EXTENSION));
+
+        return $extension === 'xlsx' ? $this->readXlsx($path) : $this->readCsv($path);
+    }
+
+    /**
+     * @return array<int, array<int, string>>
+     */
+    private function readCsv(string $path): array
+    {
+        $handle = fopen($path, 'rb');
+
+        if ($handle === false) {
+            return [];
+        }
+
+        $rows = [];
+
+        while (($data = fgetcsv($handle)) !== false) {
+            $line = array_map(fn (mixed $value): string => trim((string) $value), $data);
+
+            if (count(array_filter($line, fn (string $value): bool => $value !== '')) > 0) {
+                $rows[] = $line;
+            }
+        }
+
+        fclose($handle);
+
+        return $rows;
+    }
+
+    /**
+     * @return array<int, array<int, string>>
+     */
+    private function readXlsx(string $path): array
+    {
+        $zip = new ZipArchive;
+
+        if ($zip->open($path) !== true) {
+            return [];
+        }
+
+        $shared = [];
+        $sharedXml = $zip->getFromName('xl/sharedStrings.xml');
+
+        if ($sharedXml !== false) {
+            $xml = @simplexml_load_string($sharedXml);
+
+            if ($xml && isset($xml->si)) {
+                foreach ($xml->si as $item) {
+                    if (isset($item->t)) {
+                        $shared[] = (string) $item->t;
+                    } elseif (isset($item->r)) {
+                        $text = '';
+                        foreach ($item->r as $part) {
+                            $text .= (string) $part->t;
+                        }
+                        $shared[] = $text;
+                    } else {
+                        $shared[] = '';
+                    }
+                }
+            }
+        }
+
+        $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $zip->close();
+
+        if ($sheetXml === false) {
+            return [];
+        }
+
+        $xml = @simplexml_load_string($sheetXml);
+
+        if (! $xml || ! isset($xml->sheetData)) {
+            return [];
+        }
+
+        $rows = [];
+
+        foreach ($xml->sheetData->row as $row) {
+            $cells = [];
+
+            foreach ($row->c as $cell) {
+                $letters = preg_replace('/[0-9]/', '', (string) $cell['r']) ?? '';
+                $index = $this->columnIndex($letters);
+                $type = (string) $cell['t'];
+                $value = '';
+
+                if ($type === 's') {
+                    $value = $shared[(int) $cell->v] ?? '';
+                } elseif ($type === 'inlineStr') {
+                    $value = (string) ($cell->is->t ?? '');
+                } elseif (isset($cell->v)) {
+                    $value = (string) $cell->v;
+                }
+
+                $cells[$index] = trim($value);
+            }
+
+            if ($cells === []) {
+                continue;
+            }
+
+            $line = [];
+            $last = max(array_keys($cells));
+
+            for ($column = 0; $column <= $last; $column++) {
+                $line[] = $cells[$column] ?? '';
+            }
+
+            $rows[] = $line;
+        }
+
+        return $rows;
+    }
+
+    private function columnIndex(string $letters): int
+    {
+        $letters = strtoupper($letters);
+        $index = 0;
+        $length = strlen($letters);
+
+        for ($i = 0; $i < $length; $i++) {
+            $index = $index * 26 + (ord($letters[$i]) - 64);
+        }
+
+        return $index - 1;
+    }
+
     private function plain(string $value): string
     {
         return preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', $value) ?? '';

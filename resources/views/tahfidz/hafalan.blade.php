@@ -25,14 +25,6 @@
                     <input type="date" name="sampai" value="{{ $sampai }}">
                 </label>
                 <label>
-                    Mode
-                    <select name="mode">
-                        <option value="">Semua</option>
-                        <option value="setoran" @selected($mode === 'setoran')>Setoran</option>
-                        <option value="murajaah" @selected($mode === 'murajaah')>Murajaah</option>
-                    </select>
-                </label>
-                <label>
                     Periode
                     <select name="periode">
                         <option value="">Semua</option>

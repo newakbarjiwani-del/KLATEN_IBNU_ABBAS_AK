@@ -43,11 +43,25 @@
         </div>
     @endif
 
+    @include('kesantrian.partials.unit-tabs', ['menu' => 'input-raport-kesantrian'])
+
+    @php
+        $punyaButir = $kategori->contains(fn ($kelompok) => $kelompok->items->isNotEmpty());
+    @endphp
+
+    @if (! $punyaButir)
+        <section class="panel-block">
+            <p class="empty-state-box">
+                Kategori raport untuk unit {{ $selectedUnit }} belum dibuat.
+                <a href="{{ route('kesantrian.menu', ['menu' => 'master-kategori-raport', 'unit' => $selectedUnit]) }}">Buka Master Kategori Raport</a>
+            </p>
+        </section>
+    @else
     <section class="panel-block">
         <div class="panel-block-head">
             <h2>Form Import Raport Kesantrian</h2>
             <div class="panel-block-meta">
-                <a href="{{ route('kesantrian.input-raport-kesantrian.template', ['format' => 'xlsx']) }}" class="btn-template-excel" download="template_import_raport_kesantrian.xlsx" title="Unduh Template Excel">
+                <a href="{{ route('kesantrian.input-raport-kesantrian.template', ['format' => 'xlsx', 'unit' => $selectedUnit]) }}" class="btn-template-excel" download="template_import_raport_kesantrian.xlsx" title="Unduh Template Excel">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                         <polyline points="14 2 14 8 20 8"></polyline>
@@ -56,7 +70,7 @@
                     </svg>
                     Unduh Template Excel (.xlsx)
                 </a>
-                <a href="{{ route('kesantrian.input-raport-kesantrian.template', ['format' => 'csv']) }}" class="btn-template-csv" download="template_import_raport_kesantrian.csv" title="Unduh Template CSV">
+                <a href="{{ route('kesantrian.input-raport-kesantrian.template', ['format' => 'csv', 'unit' => $selectedUnit]) }}" class="btn-template-csv" download="template_import_raport_kesantrian.csv" title="Unduh Template CSV">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                         <polyline points="14 2 14 8 20 8"></polyline>
@@ -68,6 +82,7 @@
 
         <form class="import-form-grid" id="form-preview" method="POST" action="{{ route('kesantrian.input-raport-kesantrian.preview') }}" enctype="multipart/form-data">
             @csrf
+            <input type="hidden" name="unit" value="{{ $selectedUnit }}">
 
             <div class="import-field-file">
                 <label for="file-upload">
@@ -125,6 +140,7 @@
                 <input type="hidden" name="periode" value="{{ $selectedYear }}">
                 <input type="hidden" name="tgl" value="{{ $selectedDate }}">
                 <input type="hidden" name="rows_json" value="{{ json_encode($previewRows) }}">
+                <input type="hidden" name="unit" value="{{ $selectedUnit }}">
 
                 <div class="preview-toolbar">
                     <div class="preview-stats">
@@ -174,7 +190,7 @@
                 @endif
             </h2>
             <div class="panel-block-meta">
-                <a href="{{ route('kesantrian.menu', ['menu' => 'data-raport-kesantrian', 'periode' => $selectedYear]) }}" class="view-all-link">
+                <a href="{{ route('kesantrian.menu', ['menu' => 'data-raport-kesantrian', 'periode' => $selectedYear, 'unit' => $selectedUnit]) }}" class="view-all-link">
                     Buka Halaman Data Raport Kesantrian &rarr;
                 </a>
             </div>
@@ -187,47 +203,38 @@
                         <th rowspan="2" class="col-num">ID</th>
                         <th rowspan="2" class="col-nis">NIS</th>
                         <th rowspan="2" class="col-name">Nama</th>
-                        <th colspan="5" class="col-group-head group-ibadah">Ibadah</th>
-                        <th colspan="5" class="col-group-head group-adab">Adab</th>
-                        <th colspan="5" class="col-group-head group-pribadi">Kepribadian</th>
-                        <th colspan="3" class="col-group-head group-diri">Pengembangan Diri</th>
+                        @foreach ($kategori as $index => $kelompok)
+                            @continue($kelompok->items->isEmpty())
+                            @php $gaya = ['group-ibadah', 'group-adab', 'group-pribadi', 'group-diri'][$index % 4]; @endphp
+                            <th colspan="{{ $kelompok->items->count() }}" class="col-group-head {{ $gaya }}">{{ $kelompok->nama }}</th>
+                        @endforeach
                         <th class="col-group-head group-catatan">Catatan</th>
                     </tr>
                     <tr>
-                        <th class="col-grade group-ibadah-sub" title="Sholat Wajib">Sholat Wajib</th>
-                        <th class="col-grade group-ibadah-sub" title="Sholat Dhuha">Sholat Dhuha</th>
-                        <th class="col-grade group-ibadah-sub" title="Sholat Lail">Sholat Lail</th>
-                        <th class="col-grade group-ibadah-sub" title="Puasa Sunnah">Puasa Sunnah</th>
-                        <th class="col-grade group-ibadah-sub" title="Sedekah">Sedekah</th>
-
-                        <th class="col-grade group-adab-sub" title="Menghormati">Menghormati</th>
-                        <th class="col-grade group-adab-sub" title="Berkata Sopan">Berkata Sopan</th>
-                        <th class="col-grade group-adab-sub" title="Jujur">Jujur</th>
-                        <th class="col-grade group-adab-sub" title="Tolong Menolong">Tolong Menolong</th>
-                        <th class="col-grade group-adab-sub" title="Mengajak Kebaikan">Mengajak Kebaikan</th>
-
-                        <th class="col-grade group-pribadi-sub" title="Kebersihan Diri">Kebersihan Diri</th>
-                        <th class="col-grade group-pribadi-sub" title="Kebersihan Lingkungan">Kebersihan Lingkungan</th>
-                        <th class="col-grade group-pribadi-sub" title="Hubungan Sosial">Hubungan Sosial</th>
-                        <th class="col-grade group-pribadi-sub" title="Disiplin">Disiplin</th>
-                        <th class="col-grade group-pribadi-sub" title="Kesehatan">Kesehatan</th>
-
-                        <th class="col-diri group-diri-sub" title="Pengembangan Diri">Pengembangan Diri</th>
-                        <th class="col-diri group-diri-sub" title="Aktif Organisasi">Aktif Organisasi</th>
-                        <th class="col-diri group-diri-sub" title="Literasi Buku">Literasi Buku</th>
-
-                        <th class="col-catatan" title="Wali Hujroh">Wali Hujroh</th>
+                        @foreach ($kategori as $index => $kelompok)
+                            @continue($kelompok->items->isEmpty())
+                            @php $gaya = ['group-ibadah-sub', 'group-adab-sub', 'group-pribadi-sub', 'group-diri-sub'][$index % 4]; @endphp
+                            @foreach ($kelompok->items as $item)
+                                <th class="col-grade {{ $gaya }}" title="{{ $item->nama }}">{{ $item->nama }}</th>
+                            @endforeach
+                        @endforeach
+                        <th class="col-catatan">Catatan</th>
                     </tr>
                 </thead>
                 <tbody>
+                    @php
+                        $jumlahKolom = 4 + $kategori->sum(fn ($kelompok) => $kelompok->items->count());
+                    @endphp
                     @if (!empty($previewRows))
                         @foreach ($previewRows as $index => $row)
-                            <tr class="{{ empty($row['santri_ditemukan']) ? 'row-warning' : '' }}">
+                            <tr class="{{ empty($row['santri_ditemukan']) || empty($row['unit_sesuai']) ? 'row-warning' : '' }}">
                                 <td class="col-num">{{ $index + 1 }}</td>
                                 <td class="col-nis font-mono">
                                     {{ $row['nis'] }}
                                     @if (empty($row['santri_ditemukan']))
                                         <span class="badge-not-found" title="NIS belum terdaftar di database santri">NIS Belum Ada</span>
+                                    @elseif (empty($row['unit_sesuai']))
+                                        <span class="badge-not-found" title="Santri bukan unit ini">Bukan unit ini</span>
                                     @else
                                         <span class="badge-found" title="Santri terdaftar di database">✓</span>
                                     @endif
@@ -235,28 +242,11 @@
                                 <td class="col-name font-semibold">
                                     {{ $row['nama'] ?: '(NIS tidak terdaftar di database)' }}
                                 </td>
-                                <td class="col-grade">{!! $row['ibadah1'] ? '<span class="grade-badge grade-'.strtolower($row['ibadah1']).'">'.$row['ibadah1'].'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row['ibadah2'] ? '<span class="grade-badge grade-'.strtolower($row['ibadah2']).'">'.$row['ibadah2'].'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row['ibadah3'] ? '<span class="grade-badge grade-'.strtolower($row['ibadah3']).'">'.$row['ibadah3'].'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row['ibadah4'] ? '<span class="grade-badge grade-'.strtolower($row['ibadah4']).'">'.$row['ibadah4'].'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row['ibadah5'] ? '<span class="grade-badge grade-'.strtolower($row['ibadah5']).'">'.$row['ibadah5'].'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-
-                                <td class="col-grade">{!! $row['adab1'] ? '<span class="grade-badge grade-'.strtolower($row['adab1']).'">'.$row['adab1'].'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row['adab2'] ? '<span class="grade-badge grade-'.strtolower($row['adab2']).'">'.$row['adab2'].'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row['adab3'] ? '<span class="grade-badge grade-'.strtolower($row['adab3']).'">'.$row['adab3'].'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row['adab4'] ? '<span class="grade-badge grade-'.strtolower($row['adab4']).'">'.$row['adab4'].'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row['adab5'] ? '<span class="grade-badge grade-'.strtolower($row['adab5']).'">'.$row['adab5'].'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-
-                                <td class="col-grade">{!! $row['pribadi1'] ? '<span class="grade-badge grade-'.strtolower($row['pribadi1']).'">'.$row['pribadi1'].'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row['pribadi2'] ? '<span class="grade-badge grade-'.strtolower($row['pribadi2']).'">'.$row['pribadi2'].'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row['pribadi3'] ? '<span class="grade-badge grade-'.strtolower($row['pribadi3']).'">'.$row['pribadi3'].'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row['pribadi4'] ? '<span class="grade-badge grade-'.strtolower($row['pribadi4']).'">'.$row['pribadi4'].'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row['pribadi5'] ? '<span class="grade-badge grade-'.strtolower($row['pribadi5']).'">'.$row['pribadi5'].'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-
-                                <td class="col-diri" title="{{ $row['diri1'] }}">{{ $row['diri1'] ?: '—' }}</td>
-                                <td class="col-diri" title="{{ $row['diri2'] }}">{{ $row['diri2'] ?: '—' }}</td>
-                                <td class="col-diri" title="{{ $row['diri3'] }}">{{ $row['diri3'] ?: '—' }}</td>
-
+                                @foreach ($kategori as $kelompok)
+                                    @foreach ($kelompok->items as $item)
+                                        @include('kesantrian.partials.raport-nilai', ['nilai' => $row['nilai'][$item->id] ?? ''])
+                                    @endforeach
+                                @endforeach
                                 <td class="col-catatan" title="{{ $row['catatan'] }}">{{ $row['catatan'] ?: '—' }}</td>
                             </tr>
                         @endforeach
@@ -266,34 +256,17 @@
                                 <td class="col-num">{{ $index + 1 }}</td>
                                 <td class="col-nis font-mono">{{ trim((string) $r->NOCUST) }}</td>
                                 <td class="col-name font-semibold">{{ trim((string) $r->NMCUST) ?: '-' }}</td>
-                                <td class="col-grade">{!! $r->IbadahA ? '<span class="grade-badge grade-'.strtolower($r->IbadahA).'">'.$r->IbadahA.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $r->IbadahB ? '<span class="grade-badge grade-'.strtolower($r->IbadahB).'">'.$r->IbadahB.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $r->IbadahC ? '<span class="grade-badge grade-'.strtolower($r->IbadahC).'">'.$r->IbadahC.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $r->IbadahD ? '<span class="grade-badge grade-'.strtolower($r->IbadahD).'">'.$r->IbadahD.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $r->IbadahE ? '<span class="grade-badge grade-'.strtolower($r->IbadahE).'">'.$r->IbadahE.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-
-                                <td class="col-grade">{!! $r->AdabA ? '<span class="grade-badge grade-'.strtolower($r->AdabA).'">'.$r->AdabA.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $r->AdabB ? '<span class="grade-badge grade-'.strtolower($r->AdabB).'">'.$r->AdabB.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $r->AdabC ? '<span class="grade-badge grade-'.strtolower($r->AdabC).'">'.$r->AdabC.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $r->AdabD ? '<span class="grade-badge grade-'.strtolower($r->AdabD).'">'.$r->AdabD.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $r->AdabE ? '<span class="grade-badge grade-'.strtolower($r->AdabE).'">'.$r->AdabE.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-
-                                <td class="col-grade">{!! $r->KepribadianA ? '<span class="grade-badge grade-'.strtolower($r->KepribadianA).'">'.$r->KepribadianA.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $r->KepribadianB ? '<span class="grade-badge grade-'.strtolower($r->KepribadianB).'">'.$r->KepribadianB.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $r->KepribadianC ? '<span class="grade-badge grade-'.strtolower($r->KepribadianC).'">'.$r->KepribadianC.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $r->KepribadianD ? '<span class="grade-badge grade-'.strtolower($r->KepribadianD).'">'.$r->KepribadianD.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $r->KepribadianE ? '<span class="grade-badge grade-'.strtolower($r->KepribadianE).'">'.$r->KepribadianE.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-
-                                <td class="col-diri" title="{{ $r->PengembanganA }}">{{ $r->PengembanganA ?: '—' }}</td>
-                                <td class="col-diri" title="{{ $r->PengembanganB }}">{{ $r->PengembanganB ?: '—' }}</td>
-                                <td class="col-diri" title="{{ $r->PengembanganC }}">{{ $r->PengembanganC ?: '—' }}</td>
-
+                                @foreach ($kategori as $kelompok)
+                                    @foreach ($kelompok->items as $item)
+                                        @include('kesantrian.partials.raport-nilai', ['nilai' => $r->nilai[$item->id] ?? ''])
+                                    @endforeach
+                                @endforeach
                                 <td class="col-catatan" title="{{ $r->Catatan }}">{{ $r->Catatan ?: '—' }}</td>
                             </tr>
                         @endforeach
                     @else
                         <tr>
-                            <td colspan="22" class="text-center empty-state-box">
+                            <td colspan="{{ $jumlahKolom }}" class="text-center empty-state-box">
                                 <p style="margin: 8px 0; color: var(--ink-soft); font-size: 14px;">
                                     Belum ada berkas yang di-preview. Pilih berkas Excel/CSV di atas lalu klik tombol <strong>OPEN (Preview)</strong>.
                                 </p>
@@ -304,6 +277,7 @@
             </table>
         </div>
     </section>
+    @endif
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {

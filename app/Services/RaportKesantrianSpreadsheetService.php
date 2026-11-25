@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ReferensiPelanggaran;
 use App\Models\Santri;
 use Exception;
 use Illuminate\Http\UploadedFile;
@@ -12,9 +13,10 @@ class RaportKesantrianSpreadsheetService
     /**
      * Parse uploaded file (XLSX or CSV) and return normalized rows.
      *
+     * @param  list<array{id: int, nama: string}>  $items
      * @return array<int, array<string, mixed>>
      */
-    public function parseFile(UploadedFile|string $file): array
+    public function parseFile(UploadedFile|string $file, array $items): array
     {
         $filePath = $file instanceof UploadedFile ? $file->getRealPath() : $file;
         $originalName = $file instanceof UploadedFile ? $file->getClientOriginalName() : basename($file);
@@ -29,7 +31,7 @@ class RaportKesantrianSpreadsheetService
             return [];
         }
 
-        return $this->normalizeRows($rawRows);
+        return $this->normalizeRows($rawRows, $items);
     }
 
     /**
@@ -38,7 +40,7 @@ class RaportKesantrianSpreadsheetService
      * @param  array<int, array<string, mixed>>  $rows
      * @return array<int, array<string, mixed>>
      */
-    public function enrichWithSantri(array $rows): array
+    public function enrichWithSantri(array $rows, string $unit): array
     {
         if (empty($rows)) {
             return [];
@@ -48,7 +50,7 @@ class RaportKesantrianSpreadsheetService
 
         $students = Santri::query()
             ->whereIn('NOCUST', $nisList)
-            ->get(['NOCUST', 'NMCUST'])
+            ->get(['NOCUST', 'NMCUST', 'CODE02'])
             ->keyBy(fn ($s) => trim((string) $s->NOCUST));
 
         foreach ($rows as &$row) {
@@ -56,6 +58,8 @@ class RaportKesantrianSpreadsheetService
             $student = $students->get($nis);
             $row['nama'] = $student ? $student->nama() : '';
             $row['santri_ditemukan'] = $student !== null;
+            $row['unit_sesuai'] = $student !== null
+                && ReferensiPelanggaran::canonicalUnit((string) $student->CODE02) === $unit;
         }
         unset($row);
 
@@ -203,97 +207,77 @@ class RaportKesantrianSpreadsheetService
      * Normalize raw matrix into structured data array.
      *
      * @param  array<int, array<int, string>>  $rawRows
+     * @param  list<array{id: int, nama: string}>  $items
      * @return array<int, array<string, mixed>>
      */
-    protected function normalizeRows(array $rawRows): array
+    protected function normalizeRows(array $rawRows, array $items): array
     {
-        if (count($rawRows) < 2) {
+        if (count($rawRows) < 2 || $items === []) {
             return [];
         }
 
-        $headerRow = array_map(fn ($h) => strtolower(preg_replace('/[^a-zA-Z0-9]/', '', (string) $h)), $rawRows[0]);
+        $headerRow = array_map(fn ($header) => $this->headerKey((string) $header), $rawRows[0]);
+        $itemColumns = [];
+        $used = [];
 
-        $colMap = [];
-        $expected = [
-            'nis' => ['nis', 'nocust', 'noinduk'],
-            'ibadah1' => ['ibadah1', 'ibadaha', 'sholatwajib'],
-            'ibadah2' => ['ibadah2', 'ibadahb', 'sholatdhuha'],
-            'ibadah3' => ['ibadah3', 'ibadahc', 'sholatlail'],
-            'ibadah4' => ['ibadah4', 'ibadahd', 'puasasunnah'],
-            'ibadah5' => ['ibadah5', 'ibadahe', 'sedekah'],
-            'adab1' => ['adab1', 'adaba', 'menghormati'],
-            'adab2' => ['adab2', 'adabb', 'berkatasopan'],
-            'adab3' => ['adab3', 'adabc', 'jujur'],
-            'adab4' => ['adab4', 'adabd', 'tolongmenolong'],
-            'adab5' => ['adab5', 'adabe', 'mengajakkebaikan'],
-            'pribadi1' => ['pribadi1', 'kepribadiana', 'kepribadian1', 'kebersihandiri'],
-            'pribadi2' => ['pribadi2', 'kepribadianb', 'kepribadian2', 'kebersihanlingkungan'],
-            'pribadi3' => ['pribadi3', 'kepribadianc', 'kepribadian3', 'hubungansosial'],
-            'pribadi4' => ['pribadi4', 'kepribadiand', 'kepribadian4', 'disiplin'],
-            'pribadi5' => ['pribadi5', 'kepribadiane', 'kepribadian5', 'kesehatan'],
-            'diri1' => ['diri1', 'pengembangana', 'pengembangan1', 'pengembangandiri'],
-            'diri2' => ['diri2', 'pengembanganb', 'pengembangan2', 'aktiforganisasi'],
-            'diri3' => ['diri3', 'pengembanganc', 'pengembangan3', 'literasibuku'],
-            'catatan' => ['catatan', 'catatanwali', 'keterangan', 'walihujroh'],
-        ];
+        foreach ($headerRow as $index => $cell) {
+            if (in_array($cell, ['nis', 'nocust', 'noinduk'], true)) {
+                $used['nis'] = $index;
+                break;
+            }
+        }
 
-        foreach ($expected as $targetKey => $aliases) {
-            foreach ($headerRow as $idx => $cellText) {
-                if (in_array($cellText, $aliases, true)) {
-                    $colMap[$targetKey] = $idx;
+        foreach ($items as $item) {
+            $key = $this->headerKey($item['nama']);
+            foreach ($headerRow as $index => $cell) {
+                if ($cell === $key && ! in_array($index, $used, true)) {
+                    $itemColumns[$item['id']] = $index;
+                    $used[$item['id']] = $index;
                     break;
                 }
             }
         }
 
-        // Positional fallback if headers weren't completely identified
-        $positionalOrder = [
-            'nis', 'ibadah1', 'ibadah2', 'ibadah3', 'ibadah4', 'ibadah5',
-            'adab1', 'adab2', 'adab3', 'adab4', 'adab5',
-            'pribadi1', 'pribadi2', 'pribadi3', 'pribadi4', 'pribadi5',
-            'diri1', 'diri2', 'diri3', 'catatan',
-        ];
-        if (! isset($colMap['nis']) && count($headerRow) >= 1) {
-            foreach ($positionalOrder as $pIdx => $pKey) {
-                if (! isset($colMap[$pKey]) && isset($headerRow[$pIdx])) {
-                    $colMap[$pKey] = $pIdx;
+        foreach ($headerRow as $index => $cell) {
+            if (in_array($cell, ['catatan', 'catatanwali', 'keterangan', 'walihujroh'], true)) {
+                $used['catatan'] = $index;
+                break;
+            }
+        }
+
+        if (! isset($used['nis'])) {
+            $used['nis'] = 0;
+            $cursor = 1;
+            foreach ($items as $item) {
+                if (! isset($itemColumns[$item['id']]) && isset($headerRow[$cursor])) {
+                    $itemColumns[$item['id']] = $cursor;
                 }
+                $cursor++;
+            }
+            if (! isset($used['catatan']) && isset($headerRow[$cursor])) {
+                $used['catatan'] = $cursor;
             }
         }
 
         $results = [];
-        $dataRows = array_slice($rawRows, 1);
 
-        foreach ($dataRows as $rowIdx => $row) {
-            $nis = isset($colMap['nis']) ? ($row[$colMap['nis']] ?? '') : ($row[0] ?? '');
-            $nis = trim((string) $nis);
-
+        foreach (array_slice($rawRows, 1) as $rowIndex => $row) {
+            $nis = trim((string) ($row[$used['nis']] ?? ''));
             if ($nis === '') {
                 continue;
             }
 
+            $nilai = [];
+            foreach ($items as $item) {
+                $column = $itemColumns[$item['id']] ?? null;
+                $nilai[$item['id']] = $column === null ? '' : trim((string) ($row[$column] ?? ''));
+            }
+
             $results[] = [
-                'baris' => $rowIdx + 2,
+                'baris' => $rowIndex + 2,
                 'nis' => $nis,
-                'ibadah1' => isset($colMap['ibadah1']) ? ($row[$colMap['ibadah1']] ?? '') : '',
-                'ibadah2' => isset($colMap['ibadah2']) ? ($row[$colMap['ibadah2']] ?? '') : '',
-                'ibadah3' => isset($colMap['ibadah3']) ? ($row[$colMap['ibadah3']] ?? '') : '',
-                'ibadah4' => isset($colMap['ibadah4']) ? ($row[$colMap['ibadah4']] ?? '') : '',
-                'ibadah5' => isset($colMap['ibadah5']) ? ($row[$colMap['ibadah5']] ?? '') : '',
-                'adab1' => isset($colMap['adab1']) ? ($row[$colMap['adab1']] ?? '') : '',
-                'adab2' => isset($colMap['adab2']) ? ($row[$colMap['adab2']] ?? '') : '',
-                'adab3' => isset($colMap['adab3']) ? ($row[$colMap['adab3']] ?? '') : '',
-                'adab4' => isset($colMap['adab4']) ? ($row[$colMap['adab4']] ?? '') : '',
-                'adab5' => isset($colMap['adab5']) ? ($row[$colMap['adab5']] ?? '') : '',
-                'pribadi1' => isset($colMap['pribadi1']) ? ($row[$colMap['pribadi1']] ?? '') : '',
-                'pribadi2' => isset($colMap['pribadi2']) ? ($row[$colMap['pribadi2']] ?? '') : '',
-                'pribadi3' => isset($colMap['pribadi3']) ? ($row[$colMap['pribadi3']] ?? '') : '',
-                'pribadi4' => isset($colMap['pribadi4']) ? ($row[$colMap['pribadi4']] ?? '') : '',
-                'pribadi5' => isset($colMap['pribadi5']) ? ($row[$colMap['pribadi5']] ?? '') : '',
-                'diri1' => isset($colMap['diri1']) ? ($row[$colMap['diri1']] ?? '') : '',
-                'diri2' => isset($colMap['diri2']) ? ($row[$colMap['diri2']] ?? '') : '',
-                'diri3' => isset($colMap['diri3']) ? ($row[$colMap['diri3']] ?? '') : '',
-                'catatan' => isset($colMap['catatan']) ? ($row[$colMap['catatan']] ?? '') : '',
+                'nilai' => $nilai,
+                'catatan' => isset($used['catatan']) ? trim((string) ($row[$used['catatan']] ?? '')) : '',
             ];
         }
 
@@ -301,21 +285,20 @@ class RaportKesantrianSpreadsheetService
     }
 
     /**
-     * Generate template XLSX file.
+     * @param  list<array{id: int, nama: string}>  $items
      */
-    public function generateXlsxTemplate(string $outputPath): bool
+    public function generateXlsxTemplate(string $outputPath, array $items): bool
     {
-        return $this->createXlsx($outputPath, [$this->templateHeaders(), $this->templateSample()]);
+        return $this->createXlsx($outputPath, [$this->templateHeaders($items)]);
     }
 
     /**
-     * Generate template CSV content.
+     * @param  list<array{id: int, nama: string}>  $items
      */
-    public function generateCsvTemplate(): string
+    public function generateCsvTemplate(array $items): string
     {
         $output = fopen('php://temp', 'r+');
-        fputcsv($output, $this->templateHeaders());
-        fputcsv($output, $this->templateSample());
+        fputcsv($output, $this->templateHeaders($items));
         rewind($output);
         $csv = stream_get_contents($output);
         fclose($output);
@@ -324,33 +307,21 @@ class RaportKesantrianSpreadsheetService
     }
 
     /**
+     * @param  list<array{id: int, nama: string}>  $items
      * @return list<string>
      */
-    protected function templateHeaders(): array
+    protected function templateHeaders(array $items): array
     {
         return [
             'NIS',
-            'Sholat Wajib', 'Sholat Dhuha', 'Sholat Lail', 'Puasa Sunnah', 'Sedekah',
-            'Menghormati', 'Berkata Sopan', 'Jujur', 'Tolong Menolong', 'Mengajak Kebaikan',
-            'Kebersihan Diri', 'Kebersihan Lingkungan', 'Hubungan Sosial', 'Disiplin', 'Kesehatan',
-            'Pengembangan Diri', 'Aktif Organisasi', 'Literasi Buku',
-            'Wali Hujroh',
+            ...array_map(fn (array $item): string => $item['nama'], $items),
+            'Catatan',
         ];
     }
 
-    /**
-     * @return list<string>
-     */
-    protected function templateSample(): array
+    protected function headerKey(string $value): string
     {
-        return [
-            '999999999',
-            'A', 'B', 'C', 'D', 'E',
-            'A', 'B', 'C', 'D', 'E',
-            'A', 'B', 'C', 'D', 'E',
-            'A', 'A', 'B',
-            'Coba burhan 12mei26',
-        ];
+        return strtolower((string) preg_replace('/[^a-zA-Z0-9]/', '', $value));
     }
 
     /**

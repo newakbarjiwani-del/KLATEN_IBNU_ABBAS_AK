@@ -25,14 +25,18 @@ class TahfidzDashboardController extends Controller
             return redirect()->route('tahfidz.menu', 'data-setoran');
         }
 
+        if (in_array($menu, ['murajaah', 'setoran'], true)) {
+            return redirect()->route('tahfidz.menu', 'upload-tahfidz');
+        }
+
         $item = TahfidzMenu::find($menu);
         abort_if($item === null, 404);
 
         $hafalan = app(HafalanController::class);
 
         return match ($item['slug']) {
-            'murajaah' => $hafalan->impor($request, $item, 'murajaah'),
-            'setoran' => $hafalan->impor($request, $item, 'setoran'),
+            'upload-tahfidz' => $hafalan->impor($request, $item, 'upload-tahfidz'),
+            'laporan-capaian' => $hafalan->laporan($request, $item),
             'setoran-lama' => $hafalan->lama($request, $item),
             default => $hafalan->gabungan($request, $item),
         };

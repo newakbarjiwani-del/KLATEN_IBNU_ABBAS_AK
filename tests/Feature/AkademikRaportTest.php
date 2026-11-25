@@ -67,7 +67,7 @@ class AkademikRaportTest extends TestCase
         $this->actingAs($admin)
             ->get('/akademik/upload-raport')
             ->assertOk()
-            ->assertSee('Hanya berkas PDF. Ukuran paling besar 10 MB.');
+            ->assertSee('Nama berkas NIS_jenis.pdf', false);
     }
 
     public function test_pdf_upload_is_stored_against_akademik_rapot(): void
@@ -84,28 +84,18 @@ class AkademikRaportTest extends TestCase
         $this->actingAs($admin)
             ->post('/akademik/upload-raport', [
                 'thn_aka' => '2024/2025 - GANJIL',
-                'nocust' => '1301154344',
-                'kelas' => 'SMA|||8B|||B',
                 'ujian' => 'AKHIR',
-                'berkas' => UploadedFile::fake()->create('nilai.pdf', 20, 'application/pdf'),
-            ])
-            ->assertSessionHasErrors('kelas');
-
-        $this->actingAs($admin)
-            ->post('/akademik/upload-raport', [
-                'thn_aka' => '2024/2025 - GANJIL',
-                'nocust' => '1301154344',
-                'kelas' => 'SMP|||7A|||A',
-                'ujian' => 'AKHIR',
-                'berkas' => UploadedFile::fake()->create('nilai.pdf', 20, 'application/pdf'),
+                'berkas' => [
+                    UploadedFile::fake()->create('1301154344_type1.pdf', 20, 'application/pdf'),
+                ],
             ])
             ->assertRedirect(route('akademik.menu', 'upload-raport'))
-            ->assertSessionHas('status', 'Data berhasil diunggah.');
+            ->assertSessionHas('status', '1 berkas berhasil diunggah.');
 
         $this->assertDatabaseHas('akademik_rapot', [
             'NOCUST' => '1301154344',
             'THN_AKA' => '2024/2025 - GANJIL',
-            'FILE_RAPOT' => 'nilai.pdf',
+            'FILE_RAPOT' => '1301154344_type1.pdf',
             'UJIAN' => 'AKHIR',
         ]);
         Http::assertSent(function (Request $request): bool {
@@ -116,12 +106,12 @@ class AkademikRaportTest extends TestCase
                 && ($parts['nis']['contents'] ?? null) === '1301154344'
                 && ($parts['tahun_aka']['contents'] ?? null) === '2024/2025 - GANJIL'
                 && ($parts['ujian']['contents'] ?? null) === 'AKHIR'
-                && ($parts['file']['filename'] ?? null) === 'nilai.pdf';
+                && ($parts['file']['filename'] ?? null) === '1301154344_type1.pdf';
         });
 
         $this->actingAs($admin)
             ->get('/akademik/data-raport/1/berkas')
-            ->assertRedirect('http://101.50.2.56/Klaten_IbnuAbbas/uploadrapot/uploads/nilai.pdf');
+            ->assertRedirect('http://101.50.2.56/Klaten_IbnuAbbas/uploadrapot/uploads/1301154344_type1.pdf');
 
         $this->assertSame(1, RaportAkademik::query()->count());
     }
@@ -131,30 +121,90 @@ class AkademikRaportTest extends TestCase
         Http::preventStrayRequests();
         Http::fake([
             'http://101.50.2.56/Klaten_IbnuAbbas/uploadrapot/uploads/*' => Http::response('', 404),
-            'http://101.50.2.56/Klaten_IbnuAbbas/uploadrapot/index.php' => Http::response('The file nilai.pdf has been uploaded.'),
+            'http://101.50.2.56/Klaten_IbnuAbbas/uploadrapot/index.php' => Http::response('The file 1301154344_type1.pdf has been uploaded.'),
         ]);
         $this->seedMasters();
         RaportAkademik::query()->create([
             'NOCUST' => '1301154344',
             'THN_AKA' => '2024/2025 - GANJIL',
-            'FILE_RAPOT' => 'nilai.pdf',
+            'FILE_RAPOT' => '1301154344_type1.pdf',
             'UJIAN' => 'AKHIR',
         ]);
 
         $this->actingAs($this->admin())
             ->post('/akademik/upload-raport', [
                 'thn_aka' => '2024/2025 - GANJIL',
-                'nocust' => 'Ahmad',
-                'kelas' => 'SMP|||7A|||A',
                 'ujian' => 'AKHIR',
                 'tgl_upload' => '2026-11-17',
-                'berkas' => UploadedFile::fake()->create('nilai.pdf', 20, 'application/pdf'),
+                'berkas' => [
+                    UploadedFile::fake()->create('1301154344_type1.pdf', 20, 'application/pdf'),
+                ],
             ])
             ->assertRedirect(route('akademik.menu', 'upload-raport'))
-            ->assertSessionHas('status', 'Data berhasil diunggah.');
+            ->assertSessionHas('status', '1 berkas berhasil diunggah.');
 
         $this->assertSame(1, RaportAkademik::query()->count());
         $this->assertSame('2026-11-17', RaportAkademik::query()->value('tgl_upload'));
+    }
+
+    public function test_one_student_can_receive_two_mid_files_in_one_upload(): void
+    {
+        Http::preventStrayRequests();
+        Http::fake([
+            'http://101.50.2.56/Klaten_IbnuAbbas/uploadrapot/uploads/*' => Http::response('', 404),
+            'http://101.50.2.56/Klaten_IbnuAbbas/uploadrapot/index.php' => Http::response('The file has been uploaded.'),
+        ]);
+        $this->seedMasters();
+
+        $this->actingAs($this->admin())
+            ->post('/akademik/upload-raport', [
+                'thn_aka' => '2024/2025 - GANJIL',
+                'ujian' => 'MID',
+                'berkas' => [
+                    UploadedFile::fake()->create('1301154344_type1.pdf', 20, 'application/pdf'),
+                    UploadedFile::fake()->create('1301154344_type2.pdf', 20, 'application/pdf'),
+                    UploadedFile::fake()->create('9999999999_type1.pdf', 20, 'application/pdf'),
+                    UploadedFile::fake()->create('catatan.pdf', 20, 'application/pdf'),
+                ],
+            ])
+            ->assertRedirect(route('akademik.menu', 'upload-raport'))
+            ->assertSessionHas('status', '2 berkas berhasil diunggah. Dilewati: catatan.pdf: nama berkas harus NIS_jenis.pdf, contoh 1301154344_type1.pdf. 9999999999_type1.pdf: siswa tidak ditemukan.');
+
+        $this->assertSame(2, RaportAkademik::query()->count());
+        $this->assertDatabaseHas('akademik_rapot', [
+            'NOCUST' => '1301154344',
+            'FILE_RAPOT' => '1301154344_type1.pdf',
+            'UJIAN' => 'MID',
+        ]);
+        $this->assertDatabaseHas('akademik_rapot', [
+            'NOCUST' => '1301154344',
+            'FILE_RAPOT' => '1301154344_type2.pdf',
+            'UJIAN' => 'MID',
+        ]);
+    }
+
+    public function test_preview_groups_files_by_student_name(): void
+    {
+        $this->seedMasters();
+
+        $this->actingAs($this->admin())
+            ->postJson('/akademik/upload-raport/pratinjau', [
+                'nama' => [
+                    '1301154344_type1.pdf',
+                    '1301154344_type2.pdf',
+                    '9999999999_type1.pdf',
+                    'catatan.pdf',
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('siswa.0.nis', '1301154344')
+            ->assertJsonPath('siswa.0.nama', 'Ahmad')
+            ->assertJsonPath('siswa.0.ditemukan', true)
+            ->assertJsonPath('siswa.0.berkas.0', '1301154344_type1.pdf')
+            ->assertJsonPath('siswa.0.berkas.1', '1301154344_type2.pdf')
+            ->assertJsonPath('siswa.1.nis', '9999999999')
+            ->assertJsonPath('siswa.1.ditemukan', false)
+            ->assertJsonPath('gagal.0.nama', 'catatan.pdf');
     }
 
     public function test_upload_stays_empty_when_the_report_server_is_unreachable(): void
@@ -169,10 +219,10 @@ class AkademikRaportTest extends TestCase
             ->from('/akademik/upload-raport')
             ->post('/akademik/upload-raport', [
                 'thn_aka' => '2024/2025 - GANJIL',
-                'nocust' => '1301154344',
-                'kelas' => 'SMP|||7A|||A',
                 'ujian' => 'AKHIR',
-                'berkas' => UploadedFile::fake()->create('nilai.pdf', 20, 'application/pdf'),
+                'berkas' => [
+                    UploadedFile::fake()->create('1301154344_type1.pdf', 20, 'application/pdf'),
+                ],
             ])
             ->assertRedirect('/akademik/upload-raport')
             ->assertSessionHasErrors('berkas');

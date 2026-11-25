@@ -11,7 +11,7 @@ class StoreRaportTahfidzRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->kelCode() === 'admkes';
+        return $this->user()?->allows('admkes') ?? false;
     }
 
     protected function prepareForValidation(): void

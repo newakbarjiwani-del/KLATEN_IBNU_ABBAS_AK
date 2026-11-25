@@ -30,6 +30,22 @@
         </div>
     @endif
 
+    @include('kesantrian.partials.unit-tabs', ['menu' => 'data-raport-kesantrian'])
+
+    @php
+        $punyaButir = $kategori->contains(fn ($kelompok) => $kelompok->items->isNotEmpty());
+        $jumlahButir = $kategori->sum(fn ($kelompok) => $kelompok->items->count());
+        $jumlahKolom = 9 + $jumlahButir;
+    @endphp
+
+    @if (! $punyaButir)
+        <section class="panel-block">
+            <p class="empty-state-box">
+                Kategori raport untuk unit {{ $selectedUnit }} belum dibuat.
+                <a href="{{ route('kesantrian.menu', ['menu' => 'master-kategori-raport', 'unit' => $selectedUnit]) }}">Buka Master Kategori Raport</a>
+            </p>
+        </section>
+    @else
     <section class="panel-block">
         <div class="panel-block-head">
             <h2>Filter Data Raport Kesantrian</h2>
@@ -47,6 +63,7 @@
 
         <form class="raport-filter-grid" method="GET" action="{{ route('kesantrian.menu', 'data-raport-kesantrian') }}">
             @include('partials.keep-grup')
+            <input type="hidden" name="unit" value="{{ $selectedUnit }}">
             <div class="filter-field">
                 <label>
                     Tahun akademik
@@ -109,7 +126,7 @@
                     <span class="pill-label">Total Data:</span>
                     <span class="pill-value is-highlight">{{ $records->total() }}</span>
                 </span>
-                @include('partials.excel-link', ['href' => route('kesantrian.data-raport-kesantrian.export', request()->query())])
+                @include('partials.excel-link', ['href' => route('kesantrian.data-raport-kesantrian.export', array_merge(request()->query(), ['unit' => $selectedUnit]))])
                 <button type="button" class="btn-bulk-delete" id="btn-hapus-terpilih" disabled title="Pilih baris pada tabel untuk menghapus">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;">
                         <polyline points="3 6 5 6 21 6"></polyline>
@@ -124,6 +141,7 @@
         <form id="form-bulk-delete" method="POST" action="{{ route('kesantrian.data-raport-kesantrian.bulk') }}">
             @csrf
             @method('DELETE')
+            <input type="hidden" name="unit" value="{{ $selectedUnit }}">
 
             <div class="table-wrap has-complex-head">
                 <table class="data-table is-raport" id="tabel-data-raport">
@@ -138,37 +156,23 @@
                             <x-group-column label="Nama Siswa" column-key="NMCUST" :group-key="$groupKey" class="col-name" rowspan="2" />
                             <x-group-column label="Kelompok" column-key="kelompok" :group-key="$groupKey" rowspan="2" />
                             <x-group-column label="Tanggal" column-key="tgl" :group-key="$groupKey" class="col-date" rowspan="2" />
-                            <th colspan="5" class="col-group-head group-ibadah">Ibadah</th>
-                            <th colspan="5" class="col-group-head group-adab">Adab</th>
-                            <th colspan="5" class="col-group-head group-pribadi">Kepribadian</th>
-                            <th colspan="3" class="col-group-head group-diri">Pengembangan Diri</th>
+                            @foreach ($kategori as $index => $kelompok)
+                                @continue($kelompok->items->isEmpty())
+                                @php $gaya = ['group-ibadah', 'group-adab', 'group-pribadi', 'group-diri'][$index % 4]; @endphp
+                                <th colspan="{{ $kelompok->items->count() }}" class="col-group-head {{ $gaya }}">{{ $kelompok->nama }}</th>
+                            @endforeach
                             <th class="col-group-head group-catatan">Catatan</th>
                             <th rowspan="2" class="col-action">Aksi</th>
                         </tr>
                         <tr>
-                            <th class="col-grade group-ibadah-sub" title="Sholat Wajib">Sholat Wajib</th>
-                            <th class="col-grade group-ibadah-sub" title="Sholat Dhuha">Sholat Dhuha</th>
-                            <th class="col-grade group-ibadah-sub" title="Sholat Lail">Sholat Lail</th>
-                            <th class="col-grade group-ibadah-sub" title="Puasa Sunnah">Puasa Sunnah</th>
-                            <th class="col-grade group-ibadah-sub" title="Sedekah">Sedekah</th>
-
-                            <th class="col-grade group-adab-sub" title="Menghormati">Menghormati</th>
-                            <th class="col-grade group-adab-sub" title="Berkata Sopan">Berkata Sopan</th>
-                            <th class="col-grade group-adab-sub" title="Jujur">Jujur</th>
-                            <th class="col-grade group-adab-sub" title="Tolong Menolong">Tolong Menolong</th>
-                            <th class="col-grade group-adab-sub" title="Mengajak Kebaikan">Mengajak Kebaikan</th>
-
-                            <th class="col-grade group-pribadi-sub" title="Kebersihan Diri">Kebersihan Diri</th>
-                            <th class="col-grade group-pribadi-sub" title="Kebersihan Lingkungan">Kebersihan Lingkungan</th>
-                            <th class="col-grade group-pribadi-sub" title="Hubungan Sosial">Hubungan Sosial</th>
-                            <th class="col-grade group-pribadi-sub" title="Disiplin">Disiplin</th>
-                            <th class="col-grade group-pribadi-sub" title="Kesehatan">Kesehatan</th>
-
-                            <th class="col-diri group-diri-sub" title="Pengembangan Diri">Pengembangan Diri</th>
-                            <th class="col-diri group-diri-sub" title="Aktif Organisasi">Aktif Organisasi</th>
-                            <th class="col-diri group-diri-sub" title="Literasi Buku">Literasi Buku</th>
-
-                            <th class="col-catatan" title="Wali Hujroh">Wali Hujroh</th>
+                            @foreach ($kategori as $index => $kelompok)
+                                @continue($kelompok->items->isEmpty())
+                                @php $gaya = ['group-ibadah-sub', 'group-adab-sub', 'group-pribadi-sub', 'group-diri-sub'][$index % 4]; @endphp
+                                @foreach ($kelompok->items as $item)
+                                    <th class="col-grade {{ $gaya }}" title="{{ $item->nama }}">{{ $item->nama }}</th>
+                                @endforeach
+                            @endforeach
+                            <th class="col-catatan">Catatan</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -177,7 +181,7 @@
                             @if ($groupKey)
                                 @php $groupValue = \App\Tables\ColumnGroup::text($row, $groupKey); @endphp
                                 @if ($groupBand !== $groupValue)
-                                    <x-group-band :label="$groupLabel" :value="$groupValue" span="27" />
+                                    <x-group-band :label="$groupLabel" :value="$groupValue" :span="$jumlahKolom" />
                                     @php $groupBand = $groupValue; @endphp
                                 @endif
                             @endif
@@ -191,32 +195,16 @@
                                 <td class="col-name">{{ trim((string) $row->NMCUST) ?: '-' }}</td>
                                 <td>{{ trim((string) $row->kelompok) }}</td>
                                 <td class="col-date">{{ $row->tgl }}</td>
-
-                                <td class="col-grade">{!! $row->IbadahA ? '<span class="grade-badge grade-'.strtolower($row->IbadahA).'">'.$row->IbadahA.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row->IbadahB ? '<span class="grade-badge grade-'.strtolower($row->IbadahB).'">'.$row->IbadahB.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row->IbadahC ? '<span class="grade-badge grade-'.strtolower($row->IbadahC).'">'.$row->IbadahC.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row->IbadahD ? '<span class="grade-badge grade-'.strtolower($row->IbadahD).'">'.$row->IbadahD.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row->IbadahE ? '<span class="grade-badge grade-'.strtolower($row->IbadahE).'">'.$row->IbadahE.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-
-                                <td class="col-grade">{!! $row->AdabA ? '<span class="grade-badge grade-'.strtolower($row->AdabA).'">'.$row->AdabA.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row->AdabB ? '<span class="grade-badge grade-'.strtolower($row->AdabB).'">'.$row->AdabB.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row->AdabC ? '<span class="grade-badge grade-'.strtolower($row->AdabC).'">'.$row->AdabC.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row->AdabD ? '<span class="grade-badge grade-'.strtolower($row->AdabD).'">'.$row->AdabD.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row->AdabE ? '<span class="grade-badge grade-'.strtolower($row->AdabE).'">'.$row->AdabE.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-
-                                <td class="col-grade">{!! $row->KepribadianA ? '<span class="grade-badge grade-'.strtolower($row->KepribadianA).'">'.$row->KepribadianA.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row->KepribadianB ? '<span class="grade-badge grade-'.strtolower($row->KepribadianB).'">'.$row->KepribadianB.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row->KepribadianC ? '<span class="grade-badge grade-'.strtolower($row->KepribadianC).'">'.$row->KepribadianC.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row->KepribadianD ? '<span class="grade-badge grade-'.strtolower($row->KepribadianD).'">'.$row->KepribadianD.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-                                <td class="col-grade">{!! $row->KepribadianE ? '<span class="grade-badge grade-'.strtolower($row->KepribadianE).'">'.$row->KepribadianE.'</span>' : '<span class="dash-empty">—</span>' !!}</td>
-
-                                <td class="col-diri" title="{{ $row->PengembanganA }}">{{ $row->PengembanganA ?: '—' }}</td>
-                                <td class="col-diri" title="{{ $row->PengembanganB }}">{{ $row->PengembanganB ?: '—' }}</td>
-                                <td class="col-diri" title="{{ $row->PengembanganC }}">{{ $row->PengembanganC ?: '—' }}</td>
-
+                                @foreach ($kategori as $kelompok)
+                                    @foreach ($kelompok->items as $item)
+                                        @include('kesantrian.partials.raport-nilai', ['nilai' => $row->nilai[$item->id] ?? ''])
+                                    @endforeach
+                                @endforeach
                                 <td class="col-catatan" title="{{ $row->Catatan }}">{{ $row->Catatan ?: '—' }}</td>
 
                                 <td class="col-action">
+                                    <div class="row-actions">
+                                    <a class="btn-unduh" href="{{ route('kesantrian.data-raport-kesantrian.unduh', ['urut' => $row->urut, 'unit' => $selectedUnit]) }}">Unduh</a>
                                     <button type="button" class="btn-row-delete" data-urut="{{ $row->urut }}" data-nama="{{ trim((string) $row->NMCUST) ?: trim((string) $row->NOCUST) }}" data-periode="{{ $row->periode }}" title="Hapus baris ini">
                                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
                                             <polyline points="3 6 5 6 21 6"></polyline>
@@ -224,11 +212,12 @@
                                         </svg>
                                         Hapus
                                     </button>
+                                    </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="27" class="text-center empty-state-box">
+                                <td colspan="{{ $jumlahKolom }}" class="text-center empty-state-box">
                                     <p style="margin: 8px 0; color: var(--ink-soft); font-size: 14px;">
                                         Tidak ada data raport kesantrian yang sesuai dengan kriteria filter.
                                     </p>
@@ -252,6 +241,7 @@
         <form id="form-delete-single" method="POST" action="">
             @csrf
             @method('DELETE')
+            <input type="hidden" name="unit" value="{{ $selectedUnit }}">
             <div class="modal-head is-danger-head">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <div class="modal-icon-danger">
@@ -288,6 +278,7 @@
             </div>
         </form>
     </dialog>
+    @endif
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {

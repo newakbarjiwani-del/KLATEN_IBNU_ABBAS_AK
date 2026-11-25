@@ -18,7 +18,7 @@
                 Portal Administrasi Tahfidz
             </div>
             <h2>Ahlan wa Sahlan, {{ $account->displayName() }}</h2>
-            <p>Kelola setoran bacaan, murajaah, dan arsip setoran lama santri PPTQ Ibnu Abbas Klaten.</p>
+            <p>Unggah capaian tahfidz, lihat data santri, dan cetak laporan per bulan.</p>
         </div>
         <div class="hero-banner-quick">
             <a href="{{ route('tahfidz.menu', 'data-setoran') }}" class="hero-quick-btn is-primary">
@@ -26,14 +26,14 @@
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                     <polyline points="14 2 14 8 20 8"></polyline>
                 </svg>
-                Data Setoran dan Tahfidz
+                Data Tahfidz
             </a>
-            <a href="{{ route('tahfidz.menu', 'murajaah') }}" class="hero-quick-btn">
+            <a href="{{ route('tahfidz.menu', 'upload-tahfidz') }}" class="hero-quick-btn">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
                     <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
                 </svg>
-                Lihat Murajaah
+                Upload Tahfidz
             </a>
         </div>
     </div>

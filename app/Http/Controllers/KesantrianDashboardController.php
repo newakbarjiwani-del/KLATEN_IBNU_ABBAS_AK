@@ -6,6 +6,7 @@ use App\Http\Controllers\Kesantrian\DataPelanggaranController;
 use App\Http\Controllers\Kesantrian\DataRaportKesantrianController;
 use App\Http\Controllers\Kesantrian\InputPelanggaranController;
 use App\Http\Controllers\Kesantrian\InputRaportKesantrianController;
+use App\Http\Controllers\Kesantrian\KategoriRaportController;
 use App\Http\Controllers\Kesantrian\RaportTahfidzController;
 use App\Http\Controllers\Kesantrian\ReferensiPelanggaranController;
 use App\Http\Controllers\Kesantrian\TahunAkademikController;
@@ -35,6 +36,10 @@ class KesantrianDashboardController extends Controller
 
         if ($item['slug'] === 'master-pelanggaran') {
             return app(ReferensiPelanggaranController::class)->index();
+        }
+
+        if ($item['slug'] === 'master-kategori-raport') {
+            return app(KategoriRaportController::class)->index();
         }
 
         if ($item['slug'] === 'input-pelanggaran') {

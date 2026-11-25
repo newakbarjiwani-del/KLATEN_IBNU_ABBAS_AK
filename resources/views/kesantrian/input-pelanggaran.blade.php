@@ -24,7 +24,7 @@
             </label>
             <label>
                 Tahun akademik
-                <select name="thn_aka" required>
+                <select class="is-searchable" name="thn_aka" data-search-placeholder="Cari tahun akademik..." required>
                     <option value="">Pilih tahun</option>
                     @foreach ($years as $year)
                         <option value="{{ $year->thn_aka }}" @selected(old('thn_aka') === $year->thn_aka)>{{ $year->thn_aka }}</option>
@@ -45,7 +45,7 @@
             </label>
             <label>
                 Pelanggaran
-                <select name="id_langgar" required>
+                <select class="is-searchable" name="id_langgar" data-search-placeholder="Cari pelanggaran..." required>
                     <option value="">Pilih pelanggaran</option>
                     @foreach ($references as $reference)
                         <option value="{{ $reference->urut }}" data-skor="{{ $reference->skor }}" @selected((string) old('id_langgar') === (string) $reference->urut)>{{ $reference->jenis_pelangaran }}</option>

@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 class HafalanController extends Controller
 {
@@ -29,30 +30,18 @@ class HafalanController extends Controller
      */
     public function gabungan(Request $request, array $current): View|RedirectResponse
     {
-        $mode = $this->mode((string) $request->query('mode', ''));
         $periode = trim((string) $request->query('periode', ''));
         $dari = $this->date((string) $request->query('dari', ''));
         $sampai = $this->date((string) $request->query('sampai', ''));
         $search = mb_substr(trim((string) $request->query('q', '')), 0, 70);
-
-        $groups = [
-            'periode' => ['sql' => 'periode', 'label' => 'Periode'],
-            'NOCUST' => ['sql' => 'NOCUST', 'label' => 'NIS'],
-            'NMCUST' => ['sql' => 'NMCUST', 'label' => 'Nama'],
-            'juzzdihapal' => ['sql' => 'juzzdihapal', 'label' => 'Juzz Di Hapal'],
-            'juzzposisi' => ['sql' => 'juzzposisi', 'label' => 'Juzz Posisi'],
-            'total_juzz' => ['sql' => 'total_juzz', 'label' => 'Total Juzz'],
-            'ziadah' => ['sql' => 'ziadah', 'label' => 'Ziadah'],
-            'juzz' => ['sql' => 'juzz', 'label' => 'Juzz'],
-            'tgl' => ['sql' => 'tgl', 'label' => 'Tanggal'],
-        ];
+        $groups = $this->kolomGrup();
         $groupKey = ColumnGroup::key($request, $groups);
 
         try {
-            $periods = $this->mergedPeriods($mode);
+            $periods = $this->periods('akademik_upload_tahfidz', 'periode', 'akademik_upload_tahfidz.periode');
             $records = ColumnGroup::order(
                 $this->filterSiswa(
-                    DB::query()->fromSub($this->combined($mode, $periode, $dari, $sampai, $groupKey === 'NMCUST'), 'gabungan'),
+                    DB::query()->fromSub($this->unggahan($periode, $dari, $sampai, $groupKey === 'NMCUST'), 'gabungan'),
                     $search,
                 ),
                 $groupKey,
@@ -75,23 +64,13 @@ class HafalanController extends Controller
             'groups' => TahfidzMenu::groups(),
             'current' => $current,
             'screen' => 'gabungan',
-            'columns' => [
-                ['key' => 'periode', 'label' => 'Periode'],
-                ['key' => 'NOCUST', 'label' => 'NIS'],
-                ['key' => 'NMCUST', 'label' => 'Nama'],
-                ['key' => 'juzzdihapal', 'label' => 'Juzz Di Hapal'],
-                ['key' => 'juzzposisi', 'label' => 'Juzz Posisi'],
-                ['key' => 'total_juzz', 'label' => 'Total Juzz'],
-                ['key' => 'ziadah', 'label' => 'Ziadah'],
-                ['key' => 'juzz', 'label' => 'Juzz'],
-                ['key' => 'tgl', 'label' => 'Tanggal'],
-            ],
+            'columns' => $this->kolomTampil(),
             'records' => $records,
             'periods' => $periods,
             'periodLabel' => 'Periode',
             'selectedPeriod' => $periode,
             'search' => $search,
-            'mode' => $mode,
+            'mode' => '',
             'dari' => $dari,
             'sampai' => $sampai,
             'groupKey' => $groupKey,
@@ -120,7 +99,8 @@ class HafalanController extends Controller
             'groups' => TahfidzMenu::groups(),
             'current' => $current,
             'kind' => $kind,
-            'heading' => $kind === 'murajaah' ? 'Import Murajaah Santri' : 'Import Setoran Santri',
+            'heading' => 'Upload Tahfidz',
+            'kolom' => $this->kolomUnggah(),
             'periode' => old('periode', $periode),
             'preview' => $preview,
             'openedCount' => $openedCount,
@@ -129,7 +109,7 @@ class HafalanController extends Controller
 
     public function buka(Request $request, string $kind): RedirectResponse
     {
-        abort_unless(in_array($kind, ['murajaah', 'setoran'], true), 404);
+        abort_unless($kind === 'upload-tahfidz', 404);
 
         $validated = $request->validate([
             'periode' => ['required', 'string', 'max:10'],
@@ -184,7 +164,7 @@ class HafalanController extends Controller
 
     public function simpan(Request $request, string $kind): RedirectResponse
     {
-        abort_unless(in_array($kind, ['murajaah', 'setoran'], true), 404);
+        abort_unless($kind === 'upload-tahfidz', 404);
 
         $validated = $request->validate([
             'periode' => ['required', 'string', 'max:10'],
@@ -214,37 +194,28 @@ class HafalanController extends Controller
 
             $periode = trim($validated['periode']);
             $today = now()->toDateString();
-            $payload = array_map(function (array $row) use ($kind, $periode, $today): array {
-                if ($kind === 'murajaah') {
-                    return [
-                        'tgl' => $today,
-                        'juzz' => mb_substr($row['juzz'], 0, 50),
-                        'totjuzz' => mb_substr($row['totjuzz'], 0, 50),
-                        'NOCUST' => mb_substr($row['nis'], 0, 10),
-                        'periode' => $periode,
-                        'StatusLulus' => mb_substr($row['lulus'], 0, 15),
-                        'StatusPrestasi' => mb_substr($row['prestasi'], 0, 15),
-                    ];
-                }
-
+            $payload = array_map(function (array $row) use ($periode, $today): array {
                 return [
                     'tgl' => $today,
+                    'periode' => $periode,
+                    'NOCUST' => mb_substr($row['nis'], 0, 15),
                     'juzzdihapal' => mb_substr($row['juzzdihapal'], 0, 100),
                     'juzzposisi' => mb_substr($row['juzzposisi'], 0, 20),
                     'juzztotal' => mb_substr($row['juzztotal'], 0, 20),
-                    'NOCUST' => mb_substr($row['nis'], 0, 10),
                     'ziadah' => mb_substr($row['ziadah'], 0, 20),
-                    'periode' => $periode,
-                    'StatusLulus' => mb_substr($row['lulus'], 0, 15),
-                    'StatusPrestasi' => mb_substr($row['prestasi'], 0, 15),
+                    'murojaah' => mb_substr($row['murojaah'], 0, 50),
+                    'tuhfah' => mb_substr($row['tuhfah'], 0, 50),
+                    'jazari' => mb_substr($row['jazari'], 0, 50),
+                    'statusujian' => mb_substr($row['statusujian'], 0, 30),
+                    'prestasi' => mb_substr($row['prestasi'], 0, 50),
+                    'jumlahpertemuan' => mb_substr($row['jumlahpertemuan'], 0, 20),
+                    'totalkehadiran' => mb_substr($row['totalkehadiran'], 0, 20),
                 ];
             }, $ready);
 
-            DB::transaction(function () use ($kind, $payload): void {
-                $table = $kind === 'murajaah' ? 'akademik_murajaah' : 'akademik_setoran';
-
+            DB::transaction(function () use ($payload): void {
                 foreach (array_chunk($payload, 200) as $chunk) {
-                    DB::table($table)->insert($chunk);
+                    DB::table('akademik_upload_tahfidz')->insert($chunk);
                 }
             });
         } catch (QueryException|RuntimeException) {
@@ -252,7 +223,7 @@ class HafalanController extends Controller
         }
 
         $this->forgetImport($kind);
-        Cache::forget($kind === 'murajaah' ? 'akademik_murajaah.periode' : 'akademik_setoran.periode');
+        Cache::forget('akademik_upload_tahfidz.periode');
 
         return redirect()
             ->route('tahfidz.menu', $kind)
@@ -261,24 +232,15 @@ class HafalanController extends Controller
 
     public function template(string $kind): BinaryFileResponse
     {
-        abort_unless(in_array($kind, ['murajaah', 'setoran'], true), 404);
+        abort_unless($kind === 'upload-tahfidz', 404);
 
-        if ($kind === 'murajaah') {
-            return $this->sheets->download('template-murajaah.xlsx', [
-                ['NIS', 'Total Juzz', 'Juzz', 'Lulus', 'Prestasi'],
-                ['', '2', '1-2', 'lulus', 'baik'],
-            ], 'Murajaah');
-        }
-
-        return $this->sheets->download('template-setoran.xlsx', [
-            ['NIS', 'Juzz Di Hapal', 'Juzz Posisi', 'Juzz Total', 'Ziadah', 'Lulus', 'Prestasi'],
-            ['', '30', '5', '5', '0.5', 'lulus', 'baik'],
-        ], 'Setoran');
+        return $this->sheets->download('template-tahfidz.xlsx', [
+            ['NIS', 'Juz di hapal', 'Juz posisi', 'Juz total', 'Ziadah', 'Murojaah', 'Tuhfah', 'Jazari', 'Status ujian', 'Prestasi', 'Jumlah pertemuan', 'Total kehadiran'],
+        ], 'Tahfidz');
     }
 
     public function eksporSetoran(Request $request): BinaryFileResponse|RedirectResponse
     {
-        $mode = $this->mode((string) $request->query('mode', ''));
         $periode = trim((string) $request->query('periode', ''));
         $dari = $this->date((string) $request->query('dari', ''));
         $sampai = $this->date((string) $request->query('sampai', ''));
@@ -286,8 +248,7 @@ class HafalanController extends Controller
 
         try {
             $records = $this->filterSiswa(
-                DB::query()
-                    ->fromSub($this->combined($mode, $periode, $dari, $sampai), 'gabungan'),
+                DB::query()->fromSub($this->unggahan($periode, $dari, $sampai), 'gabungan'),
                 $search,
             )
                 ->orderByDesc('tgl')
@@ -298,25 +259,18 @@ class HafalanController extends Controller
             return $this->databaseUnavailable();
         }
 
-        $rows = [[
-            'Periode', 'NIS', 'Nama', 'Juzz Di Hapal', 'Juzz Posisi', 'Total Juzz', 'Ziadah', 'Juzz', 'Tanggal',
-        ]];
+        $rows = [array_column($this->kolomTampil(), 'label')];
 
         foreach ($records as $record) {
-            $rows[] = [
-                trim((string) $record->periode),
-                trim((string) $record->NOCUST),
-                trim((string) $record->NMCUST),
-                trim((string) $record->juzzdihapal),
-                trim((string) $record->juzzposisi),
-                trim((string) $record->total_juzz),
-                trim((string) $record->ziadah),
-                trim((string) $record->juzz),
-                filled($record->tgl) ? substr((string) $record->tgl, 0, 10) : '',
-            ];
+            $rows[] = array_map(
+                fn (array $kolom): string => $kolom['key'] === 'tgl' && filled($record->tgl)
+                    ? substr((string) $record->tgl, 0, 10)
+                    : trim((string) ($record->{$kolom['key']} ?? '')),
+                $this->kolomTampil(),
+            );
         }
 
-        return $this->sheets->download('setoran-bacaan.xlsx', $rows, 'Setoran');
+        return $this->sheets->download('data-tahfidz.xlsx', $rows, 'Tahfidz');
     }
 
     public function eksporLama(Request $request): BinaryFileResponse|RedirectResponse
@@ -474,22 +428,74 @@ class HafalanController extends Controller
         ]);
     }
 
-    private function combined(string $mode, string $periode, string $dari, string $sampai, bool $withName = false): Builder
+    /**
+     * @param  array{slug: string, label: string, summary: string, group: string}  $current
+     */
+    public function laporan(Request $request, array $current): View|RedirectResponse
     {
-        $setoran = $this->setoranRows($withName);
-        $murajaah = $this->murajaahRows($withName);
-        $this->constrain($setoran, $periode, $dari, $sampai);
-        $this->constrain($murajaah, $periode, $dari, $sampai);
+        $bulan = $this->bulanDipilih($request);
+        $search = mb_substr(trim((string) $request->query('q', '')), 0, 70);
 
-        if ($mode === 'setoran') {
-            return $setoran;
+        try {
+            $periods = $this->periods('akademik_upload_tahfidz', 'periode', 'akademik_upload_tahfidz.periode');
+            $records = $bulan === []
+                ? null
+                : $this->capaian($bulan, $search)->paginate(30)->withQueryString();
+        } catch (QueryException) {
+            return $this->databaseUnavailable();
         }
 
-        if ($mode === 'murajaah') {
-            return $murajaah;
+        if ($records !== null) {
+            $this->fillNames($records->getCollection());
         }
 
-        return $setoran->unionAll($murajaah);
+        return view('tahfidz.laporan-capaian', [
+            'account' => auth()->user(),
+            'groups' => TahfidzMenu::groups(),
+            'current' => $current,
+            'periods' => $periods,
+            'bulan' => $bulan,
+            'search' => $search,
+            'records' => $records,
+            'kolom' => $this->kolomNilai(),
+            'namaPeriode' => $periods->mapWithKeys(fn (string $nilai): array => [$nilai => $this->labelBulan($nilai)]),
+        ]);
+    }
+
+    public function cetakLaporan(Request $request): Response|RedirectResponse
+    {
+        $bulan = $this->bulanDipilih($request);
+
+        if ($bulan === []) {
+            return redirect()
+                ->route('tahfidz.menu', 'laporan-capaian')
+                ->withErrors(['bulan' => 'Pilih minimal satu bulan.']);
+        }
+
+        try {
+            $records = $this->capaian($bulan, mb_substr(trim((string) $request->query('q', '')), 0, 70))
+                ->limit(5000)
+                ->get();
+            $this->fillNames($records);
+        } catch (QueryException) {
+            return $this->databaseUnavailable();
+        }
+
+        return response(view('tahfidz.laporan-capaian-cetak', [
+            'records' => $records,
+            'kolom' => $this->kolomNilai(),
+            'labelBulan' => array_map($this->labelBulan(...), $bulan),
+        ])->render(), 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+        ]);
+    }
+
+    private function unggahan(string $periode, string $dari, string $sampai, bool $withName = false): Builder
+    {
+        $query = $this->barisTahfidz($withName);
+        $this->constrain($query, $periode, $dari, $sampai);
+
+        return $query;
     }
 
     private function filterSiswa(Builder $query, string $search): Builder
@@ -517,9 +523,9 @@ class HafalanController extends Controller
         });
     }
 
-    private function setoranRows(bool $withName): Builder
+    private function barisTahfidz(bool $withName): Builder
     {
-        $query = DB::table('akademik_setoran as h');
+        $query = DB::table('akademik_upload_tahfidz as h');
 
         if ($withName) {
             $query->leftJoin('scctcust as s', 's.NOCUST', '=', 'h.NOCUST');
@@ -532,33 +538,31 @@ class HafalanController extends Controller
             $withName ? 's.NMCUST' : DB::raw("'' as NMCUST"),
             'h.juzzdihapal',
             'h.juzzposisi',
-            'h.juzztotal as total_juzz',
+            'h.juzztotal',
             'h.ziadah',
-            DB::raw("'' as juzz"),
+            'h.murojaah',
+            'h.tuhfah',
+            'h.jazari',
+            'h.statusujian',
+            'h.prestasi',
+            'h.jumlahpertemuan',
+            'h.totalkehadiran',
             'h.tgl',
         ]);
     }
 
-    private function murajaahRows(bool $withName): Builder
+    /**
+     * @param  array<int, string>  $bulan
+     */
+    private function capaian(array $bulan, string $search): Builder
     {
-        $query = DB::table('akademik_murajaah as h');
-
-        if ($withName) {
-            $query->leftJoin('scctcust as s', 's.NOCUST', '=', 'h.NOCUST');
-        }
-
-        return $query->select([
-            'h.urut',
-            'h.periode',
-            'h.NOCUST',
-            $withName ? 's.NMCUST' : DB::raw("'' as NMCUST"),
-            DB::raw("'' as juzzdihapal"),
-            DB::raw("'' as juzzposisi"),
-            'h.totjuzz as total_juzz',
-            DB::raw("'' as ziadah"),
-            'h.juzz',
-            'h.tgl',
-        ]);
+        return $this->filterSiswa(
+            DB::query()
+                ->fromSub($this->barisTahfidz(false)->whereIn('h.periode', $bulan), 'gabungan'),
+            $search,
+        )
+            ->orderBy('periode')
+            ->orderBy('NOCUST');
     }
 
     private function fillNames(Collection $rows): void
@@ -625,26 +629,6 @@ class HafalanController extends Controller
     /**
      * @return Collection<int, string>
      */
-    private function mergedPeriods(string $mode): Collection
-    {
-        if ($mode === 'murajaah') {
-            return $this->periods('akademik_murajaah', 'periode', 'akademik_murajaah.periode');
-        }
-
-        if ($mode === 'setoran') {
-            return $this->periods('akademik_setoran', 'periode', 'akademik_setoran.periode');
-        }
-
-        return $this->periods('akademik_setoran', 'periode', 'akademik_setoran.periode')
-            ->merge($this->periods('akademik_murajaah', 'periode', 'akademik_murajaah.periode'))
-            ->unique()
-            ->sortDesc()
-            ->values();
-    }
-
-    /**
-     * @return Collection<int, string>
-     */
     private function periods(string $table, string $column, string $cacheKey): Collection
     {
         $cached = Cache::get($cacheKey);
@@ -677,9 +661,109 @@ class HafalanController extends Controller
         return collect($values);
     }
 
-    private function mode(string $mode): string
+    /**
+     * @return array<string, array{sql: string, label: string}>
+     */
+    private function kolomGrup(): array
     {
-        return in_array($mode, ['setoran', 'murajaah'], true) ? $mode : '';
+        $groups = [];
+
+        foreach ($this->kolomTampil() as $kolom) {
+            $groups[$kolom['key']] = ['sql' => $kolom['key'], 'label' => $kolom['label']];
+        }
+
+        return $groups;
+    }
+
+    /**
+     * @return array<int, array{key: string, label: string}>
+     */
+    private function kolomTampil(): array
+    {
+        return [
+            ['key' => 'periode', 'label' => 'Periode'],
+            ['key' => 'NOCUST', 'label' => 'NIS'],
+            ['key' => 'NMCUST', 'label' => 'Nama'],
+            ...$this->kolomNilai(),
+            ['key' => 'tgl', 'label' => 'Tanggal'],
+        ];
+    }
+
+    /**
+     * @return array<int, array{key: string, label: string}>
+     */
+    private function kolomUnggah(): array
+    {
+        return $this->kolomNilai();
+    }
+
+    /**
+     * @return array<int, array{key: string, label: string}>
+     */
+    private function kolomNilai(): array
+    {
+        return [
+            ['key' => 'juzzdihapal', 'label' => 'Juz di hapal'],
+            ['key' => 'juzzposisi', 'label' => 'Juz posisi'],
+            ['key' => 'juzztotal', 'label' => 'Juz total'],
+            ['key' => 'ziadah', 'label' => 'Ziadah'],
+            ['key' => 'murojaah', 'label' => 'Murojaah'],
+            ['key' => 'tuhfah', 'label' => 'Tuhfah'],
+            ['key' => 'jazari', 'label' => 'Jazari'],
+            ['key' => 'statusujian', 'label' => 'Status ujian'],
+            ['key' => 'prestasi', 'label' => 'Prestasi'],
+            ['key' => 'jumlahpertemuan', 'label' => 'Jumlah pertemuan'],
+            ['key' => 'totalkehadiran', 'label' => 'Total kehadiran'],
+        ];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function bulanDipilih(Request $request): array
+    {
+        $raw = $request->query('bulan', []);
+
+        if (is_string($raw)) {
+            $raw = [$raw];
+        }
+
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        return collect($raw)
+            ->map(fn (mixed $nilai): string => trim((string) $nilai))
+            ->filter(fn (string $nilai): bool => $nilai !== '' && mb_strlen($nilai) <= 10)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+    }
+
+    private function labelBulan(string $periode): string
+    {
+        if (preg_match('/^(\d{4})-?(\d{2})$/', $periode, $cocok) !== 1) {
+            return $periode;
+        }
+
+        $nama = [
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember',
+        ];
+        $bulan = (int) $cocok[2];
+
+        return isset($nama[$bulan]) ? $nama[$bulan].' '.$cocok[1] : $periode;
     }
 
     private function date(string $value): string

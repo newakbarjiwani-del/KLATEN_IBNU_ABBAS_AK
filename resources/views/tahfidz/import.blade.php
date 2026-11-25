@@ -59,17 +59,9 @@
                         <th>ID</th>
                         <th>NIS</th>
                         <th>Nama</th>
-                        @if ($kind === 'murajaah')
-                            <th>Total Juzz</th>
-                            <th>Juzz</th>
-                        @else
-                            <th>Juzz Di Hapal</th>
-                            <th>Juzz Posisi</th>
-                            <th>Juzz Total</th>
-                            <th>Ziadah</th>
-                        @endif
-                        <th>Lulus</th>
-                        <th>Prestasi</th>
+                        @foreach ($kolom as $kolomBaris)
+                            <th>{{ $kolomBaris['label'] }}</th>
+                        @endforeach
                     </tr>
                 </thead>
                 <tbody>
@@ -78,21 +70,13 @@
                             <td>{{ $index + 1 }}</td>
                             <td>{{ $row['nis'] }}</td>
                             <td>{{ $row['nama'] !== '' ? $row['nama'] : 'NIS tidak ditemukan' }}</td>
-                            @if ($kind === 'murajaah')
-                                <td>{{ $row['totjuzz'] }}</td>
-                                <td>{{ $row['juzz'] }}</td>
-                            @else
-                                <td>{{ $row['juzzdihapal'] }}</td>
-                                <td>{{ $row['juzzposisi'] }}</td>
-                                <td>{{ $row['juzztotal'] }}</td>
-                                <td>{{ $row['ziadah'] }}</td>
-                            @endif
-                            <td>{{ $row['lulus'] }}</td>
-                            <td>{{ $row['prestasi'] }}</td>
+                            @foreach ($kolom as $kolomBaris)
+                                <td>{{ $row[$kolomBaris['key']] ?? '' }}</td>
+                            @endforeach
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $kind === 'murajaah' ? 7 : 9 }}" class="text-center empty-state-box">
+                            <td colspan="{{ 3 + count($kolom) }}" class="text-center empty-state-box">
                                 <p style="margin: 8px 0; color: var(--ink-soft); font-size: 14px;">Buka berkas untuk melihat isinya.</p>
                             </td>
                         </tr>

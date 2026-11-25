@@ -41,7 +41,7 @@
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js@1.12.0/src/toastify.min.css">
     @endif
     <link rel="icon" href="{{ asset('logo.png') }}" type="image/png">
-    <link rel="stylesheet" href="{{ asset('css/portal.css') }}?v=43">
+    <link rel="stylesheet" href="{{ asset('css/portal.css') }}?v=52">
     <script>
         (function () {
             var saved = localStorage.getItem('theme');
@@ -225,6 +225,98 @@
                 if (dialog.hasAttribute('data-show') && typeof dialog.showModal === 'function') {
                     dialog.showModal();
                 }
+            });
+
+            document.querySelectorAll('select.is-searchable').forEach(function (select) {
+                if (select.closest('.searchable')) {
+                    return;
+                }
+
+                var wrap = document.createElement('div');
+                wrap.className = 'searchable';
+                select.parentNode.insertBefore(wrap, select);
+                wrap.appendChild(select);
+                select.classList.add('searchable-source');
+
+                var toggle = document.createElement('button');
+                toggle.type = 'button';
+                toggle.className = 'searchable-toggle';
+                wrap.appendChild(toggle);
+
+                var panel = document.createElement('div');
+                panel.className = 'searchable-panel';
+                panel.hidden = true;
+                var query = document.createElement('input');
+                query.type = 'search';
+                query.className = 'searchable-query';
+                query.placeholder = select.getAttribute('data-search-placeholder') || 'Cari...';
+                var list = document.createElement('div');
+                list.className = 'searchable-list';
+                panel.appendChild(query);
+                panel.appendChild(list);
+                wrap.appendChild(panel);
+
+                var labelOf = function () {
+                    var option = select.options[select.selectedIndex];
+                    return option && option.value !== '' ? option.text : (option ? option.text : 'Pilih');
+                };
+
+                var render = function () {
+                    var needle = query.value.trim().toLowerCase();
+                    list.innerHTML = '';
+                    var shown = 0;
+                    Array.prototype.forEach.call(select.options, function (option) {
+                        if (option.disabled) {
+                            return;
+                        }
+                        var text = option.text || '';
+                        if (needle !== '' && text.toLowerCase().indexOf(needle) === -1) {
+                            return;
+                        }
+                        shown++;
+                        var button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'searchable-option' + (option.selected ? ' is-current' : '');
+                        button.textContent = text;
+                        button.addEventListener('click', function () {
+                            select.value = option.value;
+                            select.dispatchEvent(new Event('change', { bubbles: true }));
+                            toggle.textContent = labelOf();
+                            panel.hidden = true;
+                            query.value = '';
+                        });
+                        list.appendChild(button);
+                    });
+                    if (shown === 0) {
+                        var empty = document.createElement('p');
+                        empty.className = 'searchable-empty';
+                        empty.textContent = 'Tidak ada yang cocok.';
+                        list.appendChild(empty);
+                    }
+                };
+
+                toggle.textContent = labelOf();
+                toggle.addEventListener('click', function () {
+                    panel.hidden = !panel.hidden;
+                    if (!panel.hidden) {
+                        render();
+                        query.focus();
+                    }
+                });
+                query.addEventListener('input', render);
+                select.addEventListener('change', function () {
+                    toggle.textContent = labelOf();
+                });
+                select.addEventListener('invalid', function () {
+                    panel.hidden = false;
+                    render();
+                    query.focus();
+                });
+                document.addEventListener('click', function (event) {
+                    if (!wrap.contains(event.target)) {
+                        panel.hidden = true;
+                    }
+                });
             });
         })();
     </script>
